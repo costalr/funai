@@ -430,6 +430,7 @@ useEffect(() => {
       if (cache && cacheTimestamp && agora - cacheTimestamp < validade) {
         const comunidadesCache = JSON.parse(cache);
         setComunidades(comunidadesCache);
+        console.log("📦 Cache encontrado?", !!cache, "Timestamp:", cacheTimestamp);
         return;
       }
 
@@ -438,17 +439,11 @@ useEffect(() => {
         .select(`id_comunidade, nome_comunidade, subpolo (nome_subpolo, polo (nome_polo))`)
         .order("nome_comunidade", { ascending: true });
 
-      if (!error && data) {
-        const formatado = data.map((c) => ({
-          value: c.id_comunidade,
-          label: c.nome_comunidade,
-          subpolo: c.subpolo,
-        }));
-        formatado.push({ value: "outro", label: "Outro" });
-
-        setComunidades(formatado);
-        localStorage.setItem("comunidades_cache", JSON.stringify(formatado));
-        localStorage.setItem("comunidades_cache_time", agora.toString());
+        if (error) {
+        console.error("❌ Erro ao buscar comunidades:", error);
+      } else {
+        console.log("✅ Comunidades carregadas:", data?.length);
+        console.log(data?.slice(0, 3)); // só as primeiras pra não lotar o console
       }
     }
 
@@ -464,6 +459,8 @@ useEffect(() => {
       };
     });
   };
+
+  
 
   return (
 
