@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+const apiUrl = import.meta.env.VITE_API_URL;
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -13,10 +14,10 @@ export default function Login() {
     setErro("");
 
     try {
-      // Envia as credenciais para obter o token
-      const response = await axios.post("http://127.0.0.1:8000/api/token/", {
+      const response = await axios.post(`${apiUrl}/api/token/`, {
         email,
         password,
+
       });
 
       const { access, refresh, user } = response.data;
