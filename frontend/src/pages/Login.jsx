@@ -35,8 +35,11 @@ export default function Login() {
       } else {
         setErro("Erro ao conectar com o servidor. Tente novamente mais tarde.");
       }
-      console.error("Erro no login:", error);
+      console.log("🔍 VITE_API_URL:", apiUrl);
+    console.error("Erro no login:", error);
+     console.error("Resposta do servidor:", error?.response?.data); // 👈 debug do backend
     }
+    
   };
 
   return (
