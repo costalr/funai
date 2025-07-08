@@ -49,7 +49,7 @@ export default function Login() {
 
         {erro && <p className="text-red-600 mb-3">{erro}</p>}
 
-        <label className="block mb-2 text-sm">E-mail institucional</label>
+        <label className="block mb-2 text-sm">Email Institucional</label>
         <input
           type="email"
           value={email}
