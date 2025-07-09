@@ -16,9 +16,13 @@ export default function FormularioProtecao() {
   const [idosos, setIdosos] = useState(0);
   const [modalDeslocamento, setModalDeslocamento] = useState({ terrestre: [], fluvial: [], aereo: [] });
   const [orgaos, setOrgaos] = useState({ viatura: "", embarcacao: "", freteOficial: "" });
+  const [opcaoOrgao, setOpcaoOrgao] = useState({ viatura: "", embarcacao: "", freteOficial: "" });
+  const orgaosDisponiveis = ["DSEI-Y", "FUNAI", "Exército"];
   const [tempoDeslocamento, setTempoDeslocamento] = useState("");
   const [tipoAtendimento, setTipoAtendimento] = useState([]);
   const [assistenciaSelecionada, setAssistenciaSelecionada] = useState([]);
+  const [carregandoComunidades, setCarregandoComunidades] = useState(false);
+  const [precisaInterprete, setPrecisaInterprete] = useState(false);
   const [assistenciaDetalhes, setAssistenciaDetalhes] = useState({ baixa: {}, bpc: {}, alta: {}, outros: "" });
   const [previdenciaSelecionada, setPrevidenciaSelecionada] = useState([]);
   const handleLogout = () => {
@@ -40,12 +44,16 @@ export default function FormularioProtecao() {
   const [saudeDetalhes, setSaudeDetalhes] = useState({ outros: "" });
   const [segAlimentarSelecionada, setSegAlimentarSelecionada] = useState([]);
   const [segAlimentarDetalhes, setSegAlimentarDetalhes] = useState({ refeicao: 0, cesta: 0, outros: "" });
+  const [dataAtendimento, setDataAtendimento] = useState("");
   const [outrosModais, setOutrosModais] = useState({
   terrestre: "",
   fluvial: "",
   aereo: ""
     });
-
+  const handleSelectOrgao = (tipo, valor) => {
+    setOpcaoOrgao((prev) => ({ ...prev, [tipo]: valor }));
+    setOrgaos((prev) => ({ ...prev, [tipo]: valor }));
+  };
   const [outrosDetalhes, setOutrosDetalhes] = useState({
     insumos: false,
     rede_dormir: false,
@@ -77,7 +85,7 @@ export default function FormularioProtecao() {
   }
 
   if (
-    ["Boa Vista", "São Gabriel da Cachoeira", "Santa Isabel do Rio Negro", "Barcelos", "Brasília"].includes(municipio) &&
+    ["Boa Vista", "São Gabriel da Cachoeira", "Santa Isabel do Rio Negro", "Barcelos"].includes(municipio) &&
     !localUnidade
   ) {
     novosErros.push("O campo 'Interno ou Externo' é obrigatório para esse município.");
@@ -114,7 +122,7 @@ export default function FormularioProtecao() {
 
  const handleSubmit = async () => {
   if (!validarFormulario()) return;
-  if (isSubmitting) return; // Redundância segura
+  if (isSubmitting) return; 
 
   setIsSubmitting(true); // Ativa bloqueio de envio imediatamente
 
@@ -131,6 +139,8 @@ export default function FormularioProtecao() {
         polo: comunidadeSelecionada?.subpolo?.polo?.nome_polo || null,
         municipio,
         tipo_unidade: localUnidade,
+        data_atendimento: dataAtendimento,
+        precisa_interprete: precisaInterprete,
         latitude: coordenadas.latitude,
         longitude: coordenadas.longitude,
         adultos,
@@ -395,6 +405,8 @@ useEffect(() => {
   const offset = agora.getTimezoneOffset();
   const localDate = new Date(agora.getTime() - offset * 60000).toISOString().slice(0, 16);
   setDataHora(localDate);
+  setDataAtendimento(localDate.slice(0, 10));
+
 
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(async (position) => {
@@ -422,40 +434,39 @@ useEffect(() => {
   }, []);
 
 
-  async function fetchComunidades() {
-    const cache = localStorage.getItem("comunidades_cache");
-    const cacheTimestamp = localStorage.getItem("comunidades_cache_time");
-    const agora = new Date().getTime();
-    const validade = 1000 * 60 * 60 * 24; // 24h
+ async function fetchComunidades(forcar = false) {
+  const cache = localStorage.getItem("comunidades_cache");
+  const cacheTimestamp = localStorage.getItem("comunidades_cache_time");
+  const agora = new Date().getTime();
+  const validade = 1000 * 60 * 60 * 24; // 24h
 
-    if (cache && cacheTimestamp && agora - cacheTimestamp < validade) {
-      const comunidadesCache = JSON.parse(cache);
-      setComunidades(comunidadesCache);
-      return;
-    }
-
-    const { data, error } = await supabaseCestas
-      .from("comunidade")
-      .select(`id_comunidade, nome_comunidade, comunidade_id_subpolo_fkey (nome_subpolo, polo (nome_polo))`)
-      .order("nome_comunidade", { ascending: true });
-
-    if (error) {
-      console.error("❌ Erro ao buscar comunidades:", error);
-      return;
-    }
-
-    const formatadas = data.map((c) => ({
-      value: c.id_comunidade,
-      label: c.nome_comunidade,
-      subpolo: c.comunidade_id_subpolo_fkey || null
-    }));
-
-    setComunidades(formatadas);
-    localStorage.setItem("comunidades_cache", JSON.stringify(formatadas));
-    localStorage.setItem("comunidades_cache_time", agora.toString());
-
-    console.log("✅ Comunidades carregadas:", formatadas.length);
+  if (!forcar && cache && cacheTimestamp && agora - cacheTimestamp < validade) {
+    setComunidades(JSON.parse(cache));
+    return;
   }
+
+  setCarregandoComunidades(true); 
+  const { data, error } = await supabaseCestas
+    .from("comunidade")
+    .select(`id_comunidade, nome_comunidade, comunidade_id_subpolo_fkey (nome_subpolo, polo (nome_polo))`)
+    .order("nome_comunidade", { ascending: true });
+  setCarregandoComunidades(false);
+
+  if (error) {
+    console.error("❌ Erro ao buscar comunidades:", error);
+    return;
+  }
+
+  const formatadas = data.map((c) => ({
+    value: c.id_comunidade,
+    label: c.nome_comunidade,
+    subpolo: c.comunidade_id_subpolo_fkey || null
+  }));
+
+  setComunidades(formatadas);
+  localStorage.setItem("comunidades_cache", JSON.stringify(formatadas));
+  localStorage.setItem("comunidades_cache_time", agora.toString());
+}
 
 
   const toggleOption = (categoria, opcao) => {
@@ -521,7 +532,7 @@ useEffect(() => {
         className="w-full border px-2 py-1 mb-4 bg-gray-100 text-gray-500 cursor-not-allowed"
       />
 
-      {["Boa Vista", "São Gabriel da Cachoeira", "Santa Isabel do Rio Negro", "Barcelos", "Brasília"].includes(municipio) && (
+      {["Boa Vista", "São Gabriel da Cachoeira", "Santa Isabel do Rio Negro", "Barcelos"].includes(municipio) && (
         <div className="mb-4">
           <label className="block font-semibold text-gray-700">Interno ou Externo?</label>
           <select
@@ -535,6 +546,29 @@ useEffect(() => {
           </select>
         </div>
       )}
+
+      <div className="mb-4">
+      <label className="block font-semibold text-gray-700">Data do Atendimento</label>
+        <input
+          type="date"
+          className="w-full border px-2 py-1"
+          value={dataAtendimento}
+          onChange={(e) => setDataAtendimento(e.target.value)}
+        />
+    </div>
+
+      <div className="mb-4">
+        <label className="inline-flex items-center">
+          <input
+            type="checkbox"
+            checked={precisaInterprete}
+            onChange={(e) => setPrecisaInterprete(e.target.checked)}
+            className="mr-2"
+          />
+          Necessita de intérprete
+        </label>
+      </div>
+
 
 
       <fieldset className="border rounded p-4 mb-6">
@@ -555,6 +589,21 @@ useEffect(() => {
         onChange={setComunidadeSelecionada}
         className="mb-4"
       />
+        <button
+          type="button"
+          onClick={() => fetchComunidades(true)}
+          className="text-blue-600 text-sm underline mb-4"
+        >
+          🔄
+        </button>
+
+        {carregandoComunidades && (
+        <div className="flex items-center gap-2 text-sm text-gray-500 mt-2">
+          <div className="animate-spin h-4 w-4 border-2 border-t-transparent border-gray-500 rounded-full" />
+          Carregando comunidades...
+        </div>
+)}
+
 
       {comunidadeSelecionada?.value === "outro" && (
         <input
@@ -565,12 +614,12 @@ useEffect(() => {
         />
       )}
 
-      {comunidadeSelecionada?.subpolo && (
-        <div className="mb-4 text-sm text-gray-600">
-          <p><strong>Subpolo:</strong> {comunidadeSelecionada.subpolo.nome_subpolo}</p>
-          <p><strong>Polo:</strong> {comunidadeSelecionada.subpolo.polo?.nome_polo}</p>
-        </div>
-      )}
+      {comunidadeSelecionada && (
+      <div className="mb-4 text-sm text-gray-600">
+        <p><strong>Subpolo:</strong> {comunidadeSelecionada.subpolo?.nome_subpolo || "—"}</p>
+        <p><strong>Polo:</strong> {comunidadeSelecionada.subpolo?.polo?.nome_polo || "—"}</p>
+      </div>
+    )}
 
         <h4 className="text-lg font-semibold mt-6 mb-2">1.3 Número de Acompanhantes</h4>
         <div className="flex gap-4 mb-4">
@@ -621,15 +670,35 @@ useEffect(() => {
     </label>
   ))}
 
-  {modalDeslocamento.terrestre.includes("Viatura Oficial") && (
-    <input
-      type="text"
-      placeholder="Órgão"
-      className="border px-2 py-1 w-full"
-      value={orgaos.viatura}
-      onChange={(e) => setOrgaos({ ...orgaos, viatura: e.target.value })}
-    />
-  )}
+ {modalDeslocamento.terrestre.includes("Viatura Oficial") && (
+  <>
+    <label className="block text-sm font-medium mt-2">Órgão responsável:</label>
+    <select
+      className="border px-2 py-1 w-full mt-1"
+      value={opcaoOrgao.viatura}
+      onChange={(e) => {
+        const valor = e.target.value;
+        handleSelectOrgao("viatura", valor === "Outros" ? "" : valor);
+        setOpcaoOrgao((prev) => ({ ...prev, viatura: valor }));
+      }}
+    >
+      <option value="">Selecione o órgão</option>
+      {[...orgaosDisponiveis, "Outros"].map((opcao) => (
+        <option key={opcao} value={opcao}>{opcao}</option>
+      ))}
+    </select>
+
+    {opcaoOrgao.viatura === "Outros" && (
+      <input
+        type="text"
+        placeholder="Órgão"
+        className="mt-2 border px-2 py-1 w-full"
+        value={orgaos.viatura}
+        onChange={(e) => setOrgaos((prev) => ({ ...prev, viatura: e.target.value }))}
+      />
+    )}
+  </>
+)}
 
   {modalDeslocamento.terrestre.includes("Outros") && (
     <input
@@ -657,14 +726,36 @@ useEffect(() => {
   ))}
 
   {modalDeslocamento.fluvial.includes("Embarcação Oficial") && (
-    <input
-      type="text"
-      placeholder="Órgão"
-      className="border px-2 py-1 w-full"
-      value={orgaos.embarcacao}
-      onChange={(e) => setOrgaos({ ...orgaos, embarcacao: e.target.value })}
-    />
-  )}
+  <>
+    <label className="block text-sm font-medium mt-2">Órgão responsável:</label>
+    <select
+      className="border px-2 py-1 w-full mt-1"
+      value={opcaoOrgao.embarcacao}
+      onChange={(e) => {
+        const valor = e.target.value;
+        handleSelectOrgao("embarcacao", valor === "Outros" ? "" : valor);
+        setOpcaoOrgao((prev) => ({ ...prev, embarcacao: valor }));
+      }}
+    >
+      <option value="">Selecione o órgão</option>
+      {[...orgaosDisponiveis, "Outros"].map((opcao) => (
+        <option key={opcao} value={opcao}>{opcao}</option>
+      ))}
+    </select>
+
+    {opcaoOrgao.embarcacao === "Outros" && (
+      <input
+        type="text"
+        placeholder="Órgão"
+        className="mt-2 border px-2 py-1 w-full"
+        value={orgaos.embarcacao}
+        onChange={(e) => setOrgaos((prev) => ({ ...prev, embarcacao: e.target.value }))}
+      />
+    )}
+  </>
+)}
+
+
 
   {modalDeslocamento.fluvial.includes("Outros") && (
     <input
@@ -694,16 +785,34 @@ useEffect(() => {
   ))}
 
   {modalDeslocamento.aereo.includes("Frete aéreo Oficial") && (
-    <div className="ml-6 mt-2">
-      <label className="block text-sm font-medium">Órgão:</label>
+  <>
+    <label className="block text-sm font-medium mt-2">Órgão responsável:</label>
+    <select
+      className="border px-2 py-1 w-full mt-1"
+      value={opcaoOrgao.freteOficial}
+      onChange={(e) => {
+        const valor = e.target.value;
+        handleSelectOrgao("freteOficial", valor === "Outros" ? "" : valor);
+        setOpcaoOrgao((prev) => ({ ...prev, freteOficial: valor }));
+      }}
+    >
+      <option value="">Selecione o órgão</option>
+      {[...orgaosDisponiveis, "Outros"].map((opcao) => (
+        <option key={opcao} value={opcao}>{opcao}</option>
+      ))}
+    </select>
+
+    {opcaoOrgao.freteOficial === "Outros" && (
       <input
         type="text"
-        className="border px-2 py-1 w-full"
+        placeholder="Órgão"
+        className="mt-2 border px-2 py-1 w-full"
         value={orgaos.freteOficial}
-        onChange={(e) => setOrgaos({ ...orgaos, freteOficial: e.target.value })}
+        onChange={(e) => setOrgaos((prev) => ({ ...prev, freteOficial: e.target.value }))}
       />
-    </div>
-  )}
+    )}
+  </>
+)}
 
   {modalDeslocamento.aereo.includes("Outros") && (
     <input

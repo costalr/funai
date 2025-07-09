@@ -35,8 +35,6 @@ export default function Login() {
       } else {
         setErro("Erro ao conectar com o servidor. Tente novamente mais tarde.");
       }
-      console.log("🔍 VITE_API_URL:", apiUrl);
-
     }
     
   };

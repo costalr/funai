@@ -14,7 +14,6 @@ SECRET_KEY = config('SECRET_KEY', default='chave-padrao-insegura')
 DEBUG = config('DEBUG', default=False, cast=bool)
 ALLOWED_HOSTS = ['*']
 
-# Application definition
 
 INSTALLED_APPS = [
     'django.contrib.admin',
