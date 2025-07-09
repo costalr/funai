@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Select from "react-select";
 import { supabaseAssistencia } from "../lib/supabaseAssistencia";
+import { supabaseCestas } from "../lib/supabaseCestas";
 
 export default function FormularioProtecao() {
   const [servidor, setServidor] = useState("");
@@ -420,32 +421,41 @@ useEffect(() => {
     fetchComunidades();
   }, []);
 
-    async function fetchComunidades() {
-      const cache = localStorage.getItem("comunidades_cache");
-      const cacheTimestamp = localStorage.getItem("comunidades_cache_time");
 
-      const agora = new Date().getTime();
-      const validade = 1000 * 60 * 60 * 24;
+  async function fetchComunidades() {
+    const cache = localStorage.getItem("comunidades_cache");
+    const cacheTimestamp = localStorage.getItem("comunidades_cache_time");
+    const agora = new Date().getTime();
+    const validade = 1000 * 60 * 60 * 24; // 24h
 
-      if (cache && cacheTimestamp && agora - cacheTimestamp < validade) {
-        const comunidadesCache = JSON.parse(cache);
-        setComunidades(comunidadesCache);
-        console.log("📦 Cache encontrado?", !!cache, "Timestamp:", cacheTimestamp);
-        return;
-      }
-
-      const { data, error } = await supabaseAssistencia
-        .from("comunidade")
-        .select(`id_comunidade, nome_comunidade, subpolo (nome_subpolo, polo (nome_polo))`)
-        .order("nome_comunidade", { ascending: true });
-
-        if (error) {
-        console.error("❌ Erro ao buscar comunidades:", error);
-      } else {
-        console.log("✅ Comunidades carregadas:", data?.length);
-        console.log(data?.slice(0, 3)); // só as primeiras pra não lotar o console
-      }
+    if (cache && cacheTimestamp && agora - cacheTimestamp < validade) {
+      const comunidadesCache = JSON.parse(cache);
+      setComunidades(comunidadesCache);
+      return;
     }
+
+    const { data, error } = await supabaseCestas
+      .from("comunidade")
+      .select(`id_comunidade, nome_comunidade, comunidade_id_subpolo_fkey (nome_subpolo, polo (nome_polo))`)
+      .order("nome_comunidade", { ascending: true });
+
+    if (error) {
+      console.error("❌ Erro ao buscar comunidades:", error);
+      return;
+    }
+
+    const formatadas = data.map((c) => ({
+      value: c.id_comunidade,
+      label: c.nome_comunidade,
+      subpolo: c.comunidade_id_subpolo_fkey || null
+    }));
+
+    setComunidades(formatadas);
+    localStorage.setItem("comunidades_cache", JSON.stringify(formatadas));
+    localStorage.setItem("comunidades_cache_time", agora.toString());
+
+    console.log("✅ Comunidades carregadas:", formatadas.length);
+  }
 
 
   const toggleOption = (categoria, opcao) => {
