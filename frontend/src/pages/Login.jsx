@@ -1,84 +1,162 @@
+import {
+  Container,
+  Box,
+  Typography,
+  TextField,
+  Button,
+  Link,
+  Paper,
+} from "@mui/material";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import axios from "axios";
-const apiUrl = import.meta.env.VITE_API_URL;
 
-export default function Login() {
+export default function LoginTelaYanomami() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [erro, setErro] = useState("");
-  const navigate = useNavigate();
-
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setErro("");
-
-    try {
-      const response = await axios.post(`${apiUrl}/api/token/`, {
-        email,
-        password,
-
-      });
-
-      const { access, refresh, user } = response.data;
-
-      // Armazena tokens e dados do usuário no localStorage
-      localStorage.setItem("access_token", access);
-      localStorage.setItem("refresh_token", refresh);
-      localStorage.setItem("usuario", JSON.stringify(user));
-
-      // Redireciona para o dashboard
-      navigate("/dashboard");
-    } catch (error) {
-      if (error.response?.status === 401) {
-        setErro("Credenciais inválidas. Verifique e tente novamente.");
-      } else {
-        setErro("Erro ao conectar com o servidor. Tente novamente mais tarde.");
-      }
-    }
-    
-  };
+  const [senha, setSenha] = useState("");
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <form
-        onSubmit={handleLogin}
-        className="bg-white p-6 rounded shadow-md w-full max-w-md"
-      >
-        <h1 className="text-xl font-semibold mb-4">Login - Plataforma FUNAI</h1>
-
-        {erro && <p className="text-red-600 mb-3">{erro}</p>}
-
-        <label className="block mb-2 text-sm">Email Institucional</label>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full border px-3 py-2 mb-4 rounded"
-          placeholder="seu.nome@funai.gov.br"
-          required
+    <Box
+      sx={{
+        minHeight: "100vh",
+        backgroundColor: "#0e4a2b", // verde profundo
+        backgroundImage: "url('/bg-noise.png')", // opcional: textura tribal
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "white",
+      }}
+    >
+<Container
+  maxWidth="xs"
+  sx={{
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center", // 👈 isso centraliza horizontalmente tudo dentro
+    textAlign: "center",
+  }}
+>        <Box
+          component="img"
+          src="/funai-logo.png"
+          alt="FUNAI"
+          sx={{ width: 200, mx: "auto", mb: 8 }}
         />
 
-        <label className="block mb-2 text-sm">Senha</label>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full border px-3 py-2 mb-4 rounded"
-          required
-        />
+        {/* Título */}
+          <Typography
+            variant="h4"
+            fontWeight="bold"
+            gutterBottom
+            sx={{
+              fontFamily: `"Hoverage", sans-serif`,
+              letterSpacing: 8, 
+              color: "#F4E3C1", 
+              fontSize: "5rem", 
+              whiteSpace: "nowrap", 
+              textAlign: "center", 
+              mb: 8
+            }}
+          >
+            YANOMAMI & YE’KUANA
+          </Typography>
 
-        <button
-          type="submit"
-          className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
-        >
-          Entrar
-        </button>
+
+        {/* Formulário */}
+        <Box component="form" sx={{ mt: 4 }}>
+<TextField
+  label="Email Institucional"
+  type="email"
+  fullWidth
+  variant="outlined"
+  value={email}
+  onChange={(e) => setEmail(e.target.value)}
+InputLabelProps={{
+  shrink: true,
+  sx: {
+    backgroundColor: "#0E4A2B", 
+    color: "#fdf1cd",
+    px: 1,
+    mx: 14,
+    mt: -2,
+    fontSize: "1.1rem",
+    fontWeight: 'bold',
+  },
+}}
+
+  sx={{
+    mb: 5,
+    "& .MuiOutlinedInput-root": {
+      borderRadius: "15px",
+      backgroundColor: "#eaf0ff",
+      color: "#000",
+    },
+    "& .MuiOutlinedInput-input": {
+      fontSize: '0.85rem',
+      padding: "20px 1px 10px 10px", 
+    },
+  }}
+/>
 
 
-      </form>
-    </div>
+<TextField
+  label="Senha"
+  type="password"
+  fullWidth
+  variant="outlined"
+  value={senha}
+  onChange={(e) => setSenha(e.target.value)}
+  InputLabelProps={{
+    shrink: true,
+    sx: {
+    backgroundColor: "#0E4A2B", 
+    color: "#fdf1cd",
+    px: 1,
+    mx: 18,
+    mt: -2,
+    fontSize: "1.1rem",
+    fontWeight: 'bold',
+    },
+  }}
+  sx={{
+    mb: 3,
+    "& .MuiOutlinedInput-root": {
+      borderRadius: "15px",
+      backgroundColor: "#eaf0ff",
+      color: "#000",
+    },
+    "& .MuiOutlinedInput-input": {
+      fontSize: '0.85rem',
+      padding: "20px 1px 10px 10px",
+    },
+  }}
+/>
 
-    
+
+   <Button
+  variant="contained"
+  fullWidth
+  sx={{
+    backgroundColor: "#4caf50",
+    color: "#fdf1cd", 
+    fontWeight: "bold",
+    "&:hover": {
+      backgroundColor: "#3d9140",
+    },
+    mb: 2,
+  }}
+>
+  Entrar
+</Button>
+
+          <Link
+            href="#"
+            underline="hover"
+            sx={{ fontSize: "0.75rem", color: "#ccc" }}
+          >
+            Esqueci minha senha
+          </Link>
+        </Box>
+      </Container>
+    </Box>
   );
 }
