@@ -379,13 +379,6 @@ const handleClear = () => {
 
 
 
-  const subopcoesPadrao = [
-    { key: "cear", label: "Preenchimento de Certidão de Exercício de Atividade Rural (CEAR)" },
-    { key: "meuInss", label: "Cadastro Meu INSS" },
-    { key: "requerimento", label: "Abertura de requerimento" },
-    { key: "consulta", label: "Consulta" },
-    { key: "exigencia", label: "Cumprimento de Exigência" }
-  ];
 
   const opcoesTempoDeslocamento = [
   { value: "ate_1", label: "Até 1 dia" },
@@ -857,7 +850,6 @@ async function fetchComunidades(forcar = false) {
       />
     </Grid>
 
-    {/* Comunidade */}
  
     {/* Comunidade */}
     <Grid item xs={12}>
