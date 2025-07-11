@@ -1,7 +1,18 @@
 import { useEffect, useState } from "react";
-import Select from "react-select";
 import { supabaseAssistencia } from "../lib/supabaseAssistencia";
 import { supabaseCestas } from "../lib/supabaseCestas";
+import {
+  Grid,
+  TextField,
+  FormGroup,
+  FormControlLabel,
+  Checkbox,
+  Typography,
+  Box,
+  Button,
+  Autocomplete, 
+  MenuItem
+} from "@mui/material";
 
 export default function FormularioProtecao() {
   const [servidor, setServidor] = useState("");
@@ -10,7 +21,7 @@ export default function FormularioProtecao() {
   const [nome, setNome] = useState("");
   const [comunidades, setComunidades] = useState([]);
   const [comunidadeSelecionada, setComunidadeSelecionada] = useState(null);
-  const [comunidadeManual, setComunidadeManual] = useState("");
+  const [comunidadeManual] = useState("");
   const [adultos, setAdultos] = useState(0);
   const [criancas, setCriancas] = useState(0);
   const [idosos, setIdosos] = useState(0);
@@ -21,7 +32,7 @@ export default function FormularioProtecao() {
   const [tempoDeslocamento, setTempoDeslocamento] = useState("");
   const [tipoAtendimento, setTipoAtendimento] = useState([]);
   const [assistenciaSelecionada, setAssistenciaSelecionada] = useState([]);
-  const [carregandoComunidades, setCarregandoComunidades] = useState(false);
+  const [setCarregandoComunidades] = useState(false);
   const [precisaInterprete, setPrecisaInterprete] = useState(false);
   const [assistenciaDetalhes, setAssistenciaDetalhes] = useState({ baixa: {}, bpc: {}, alta: {}, outros: "" });
   const [previdenciaSelecionada, setPrevidenciaSelecionada] = useState([]);
@@ -41,6 +52,7 @@ export default function FormularioProtecao() {
   const [documentacaoSelecionada, setDocumentacaoSelecionada] = useState([]);
   const [documentacaoDetalhes, setDocumentacaoDetalhes] = useState({});
   const [saudeSelecionada, setSaudeSelecionada] = useState([]);
+  const [localUnidade] = useState("");
   const [saudeDetalhes, setSaudeDetalhes] = useState({ outros: "" });
   const [segAlimentarSelecionada, setSegAlimentarSelecionada] = useState([]);
   const [segAlimentarDetalhes, setSegAlimentarDetalhes] = useState({ refeicao: 0, cesta: 0, outros: "" });
@@ -300,6 +312,69 @@ export default function FormularioProtecao() {
   }
 };
 
+const handleClear = () => {
+  setServidor("");
+  setDataHora(new Date().toISOString().slice(0, 16));
+  setCoordenadas({ latitude: "", longitude: "" });
+  setNome("");
+  setComunidadeSelecionada(null);
+  setAdultos(0);
+  setCriancas(0);
+  setIdosos(0);
+  setMunicipio("");
+  setModalDeslocamento({ terrestre: [], fluvial: [], aereo: [] });
+  setOrgaos({ viatura: "", embarcacao: "", freteOficial: "" });
+  setOpcaoOrgao({ viatura: "", embarcacao: "", freteOficial: "" });
+  setTempoDeslocamento("");
+  setTipoAtendimento([]);
+  setAssistenciaSelecionada([]);
+  setAssistenciaDetalhes({ baixa: {}, bpc: {}, alta: {}, outros: "" });
+  setPrevidenciaSelecionada([]);
+  setPrevidenciaDetalhes({
+    salario_maternidade: {},
+    aposentadoria: {},
+    pensao_morte: {},
+    auxilio_incapacidade: {},
+    auxilio_reclusao: {},
+  });
+  setDocumentacaoSelecionada([]);
+  setDocumentacaoDetalhes({});
+  setSaudeSelecionada([]);
+  setSaudeDetalhes({ outros: "" });
+  setSegAlimentarSelecionada([]);
+  setSegAlimentarDetalhes({ refeicao: 0, cesta: 0, outros: "" });
+  setOutrosDetalhes({
+    insumos: false,
+    rede_dormir: false,
+    rede_dormir_qtd: 0,
+    outros: false,
+    outros_qtd: 0,
+    outros_desc: "",
+    banco: false,
+    comercio: false,
+    delegacia: false,
+    artesanato: false,
+    apoio_logistico: false,
+    combustivel: false,
+    combustivel_qtd: 0,
+    deslocamento_aereo: false,
+    deslocamento_terrestre: false,
+    deslocamento_fluvial: false,
+  });
+  setObservacoes("");
+  setOutrosModais({ terrestre: "", fluvial: "", aereo: "" });
+  setPrecisaInterprete(false);
+
+  // Atualiza a data/hora novamente
+  const agora = new Date();
+  const offset = agora.getTimezoneOffset();
+  const localDate = new Date(agora.getTime() - offset * 60000).toISOString().slice(0, 16);
+  setDataHora(localDate);
+  setDataAtendimento(localDate.slice(0, 10));
+};
+
+
+
   const subopcoesPadrao = [
     { key: "cear", label: "Preenchimento de Certidão de Exercício de Atividade Rural (CEAR)" },
     { key: "meuInss", label: "Cadastro Meu INSS" },
@@ -315,13 +390,15 @@ export default function FormularioProtecao() {
   { value: "mais_15", label: "Mais de 15 dias" },
 ];
 
-    const toggleAssistencia = (id) => {
+const toggleAssistencia = (id) => {
   setAssistenciaSelecionada((prev) =>
     prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
   );
-    };
+};
 
-        const toggleAssistenciaSubopcao = (blocoId, subopcaoKey) => {
+
+
+const toggleAssistenciaSubopcao = (blocoId, subopcaoKey) => {
     setAssistenciaDetalhes((prev) => {
       const anterior = prev[blocoId] || {};
       return {
@@ -332,16 +409,16 @@ export default function FormularioProtecao() {
         }
       };
     });
-  };
+};
 
 
-    const togglePrevidencia = (id) => {
+const togglePrevidencia = (id) => {
       setPrevidenciaSelecionada((prev) =>
         prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
       );
-    };
+};
 
-    const toggleSubopcao = (blocoId, subopcaoKey) => {
+const toggleSubopcao = (blocoId, subopcaoKey) => {
     setPrevidenciaDetalhes((prev) => {
       const anterior = prev[blocoId] || {};
       return {
@@ -352,7 +429,7 @@ export default function FormularioProtecao() {
         }
       };
     });
-  };
+};
 
   const toggleSubopcaoDocumentacao = (blocoId, subopcaoKey) => {
   setDocumentacaoDetalhes((prev) => {
@@ -372,29 +449,28 @@ export default function FormularioProtecao() {
     setDocumentacaoSelecionada((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
-  };
+};
 
   
   const toggleSaude = (id) => {
     setSaudeSelecionada((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
-  };
+};
 
     const toggleSegAlimentar = (id) => {
     setSegAlimentarSelecionada((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
-  };
+};
 
     const toggleOutros = (key) => {
     setOutrosDetalhes((prev) => ({
       ...prev,
       [key]: !prev[key],
     }));
-  };
+};
   const [municipio, setMunicipio] = useState("");
-  const [localUnidade, setLocalUnidade] = useState("");
 
 
 useEffect(() => {
@@ -434,7 +510,7 @@ useEffect(() => {
   }, []);
 
 
- async function fetchComunidades(forcar = false) {
+async function fetchComunidades(forcar = false) {
   const cache = localStorage.getItem("comunidades_cache");
   const cacheTimestamp = localStorage.getItem("comunidades_cache_time");
   const agora = new Date().getTime();
@@ -445,55 +521,82 @@ useEffect(() => {
     return;
   }
 
-  setCarregandoComunidades(true); 
   const { data, error } = await supabaseCestas
     .from("comunidade")
-    .select(`id_comunidade, nome_comunidade, comunidade_id_subpolo_fkey (nome_subpolo, polo (nome_polo))`)
+    .select(`
+      id_comunidade,
+      nome_comunidade,
+      comunidade_id_subpolo_fkey (
+        nome_subpolo,
+        polo (nome_polo)
+      )
+    `)
     .order("nome_comunidade", { ascending: true });
-  setCarregandoComunidades(false);
 
   if (error) {
-    console.error("❌ Erro ao buscar comunidades:", error);
+    console.error("Erro ao buscar comunidades:", error);
     return;
   }
 
-  const formatadas = data.map((c) => ({
-    value: c.id_comunidade,
-    label: c.nome_comunidade,
-    subpolo: c.comunidade_id_subpolo_fkey || null
-  }));
+  // Mapa para contar duplicados com base na combinação nome + subpolo + polo
+  const chaveComunidade = (c) => {
+    const sub = c.comunidade_id_subpolo_fkey?.nome_subpolo || "";
+    const pol = c.comunidade_id_subpolo_fkey?.polo?.nome_polo || "";
+    return `${c.nome_comunidade}__${sub}__${pol}`;
+  };
 
-  setComunidades(formatadas);
-  localStorage.setItem("comunidades_cache", JSON.stringify(formatadas));
+  const contadorChaves = {};
+  for (const c of data) {
+    const chave = chaveComunidade(c);
+    contadorChaves[chave] = (contadorChaves[chave] || 0) + 1;
+  }
+
+  // Segunda contagem só por nome para verificar se existe ambiguidade
+  const contadorPorNome = {};
+  for (const c of data) {
+    contadorPorNome[c.nome_comunidade] = (contadorPorNome[c.nome_comunidade] || 0) + 1;
+  }
+
+  const formatadas = data.map((c) => {
+    const nome = c.nome_comunidade;
+    const subpolo = c.comunidade_id_subpolo_fkey?.nome_subpolo || "";
+    const polo = c.comunidade_id_subpolo_fkey?.polo?.nome_polo || "";
+
+    const chave = chaveComunidade(c);
+    const chaveDuplicada = contadorChaves[chave] > 1;
+    const nomeAmbiguo = contadorPorNome[nome] > 1;
+
+    const label = nomeAmbiguo
+      ? `${nome} — ${subpolo} / ${polo}`
+      : nome;
+
+    return {
+      value: c.id_comunidade,
+      label,
+      nome_comunidade: nome,
+      subpolo: c.comunidade_id_subpolo_fkey || null,
+    };
+  });
+
+  // Remove duplicados baseados na combinação nome + subpolo + polo
+  const vistos = new Set();
+  const unicos = formatadas.filter((c) => {
+    const chave = `${c.nome_comunidade}__${c.subpolo?.nome_subpolo || ""}__${c.subpolo?.polo?.nome_polo || ""}`;
+    if (vistos.has(chave)) return false;
+    vistos.add(chave);
+    return true;
+  });
+
+  setComunidades(unicos);
+  localStorage.setItem("comunidades_cache", JSON.stringify(unicos));
   localStorage.setItem("comunidades_cache_time", agora.toString());
 }
-
-
-  const toggleOption = (categoria, opcao) => {
-    setModalDeslocamento((prev) => {
-      const selecionadas = prev[categoria];
-      return {
-        ...prev,
-        [categoria]: selecionadas.includes(opcao)
-          ? selecionadas.filter((item) => item !== opcao)
-          : [...selecionadas, opcao]
-      };
-    });
-  };
 
   
 
   return (
-
-    
     <div className="p-6 max-w-3xl mx-auto">
       <h2 className="text-xl font-bold mb-4">Formulário de Proteção Social</h2>
-        <button
-            onClick={handleLogout}
-            className="text-sm text-red-600 hover:text-red-800 underline"
-          >
-            Sair
-          </button>
         {erros.length > 0 && (
         <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
           <ul className="list-disc pl-5">
@@ -504,735 +607,1659 @@ useEffect(() => {
         </div>
       )}
 
-          <label className="block font-semibold text-gray-700">Nome do Servidor</label>
-      <input
+
+<Box
+  sx={{
+    borderRadius: 2,
+    border: "1px solid #E0E0E0",
+    backgroundColor: "#fff",
+    boxShadow: "0 1px 3px rgba(0, 0, 0, 0.08)",
+    p: 3,
+    mt: 2,
+  }}
+>
+  <Typography
+    variant="subtitle1"
+    fontWeight="bold"
+    gutterBottom
+    sx={{ fontSize: "1rem", display: "flex", alignItems: "center", gap: 1 }}
+  >
+    📋 Dados do Atendimento
+  </Typography>
+
+  <Grid container spacing={2}>
+    <Grid item xs={12} sm={4}>
+      <Typography
+        variant="caption"
+        fontWeight="medium"
+        color="text.secondary"
+        sx={{ mb: 0.5 }}
+      >
+        Nome do Servidor
+      </Typography>
+      <TextField
         value={servidor}
+        variant="outlined"
+        size="small"
+        fullWidth
         disabled
-        className="w-full border px-2 py-1 mb-4 bg-gray-100 text-gray-500 cursor-not-allowed"
+        InputProps={{ readOnly: true }}
+        sx={{
+          "& .MuiOutlinedInput-root": {
+            borderRadius: 2,
+            fontSize: "0.85rem",
+          },
+          "& input": {
+            padding: "8px 10px",
+          },
+        }}
       />
+    </Grid>
 
-    <label className="block font-semibold text-gray-700">Horário e Data</label>
-      <input
+    <Grid item xs={12} sm={4}>
+      <Typography
+        variant="caption"
+        fontWeight="medium"
+        color="text.secondary"
+        sx={{ mb: 0.5 }}
+      >
+        Horário e Data
+      </Typography>
+      <TextField
         value={dataHora}
+        fullWidth
+        size="small"
         disabled
-        className="w-full border px-2 py-1 mb-4 bg-gray-100 text-gray-500 cursor-not-allowed"
+        InputProps={{ readOnly: true }}
+        sx={{
+          "& .MuiOutlinedInput-root": {
+            borderRadius: 2,
+            fontSize: "0.85rem",
+          },
+          "& input": {
+            padding: "8px 10px",
+          },
+        }}
       />
+    </Grid>
 
-      <label className="block font-semibold text-gray-700">Local de Atendimento (Coordenadas)</label>
-      <input
+    <Grid item xs={12} sm={4}>
+      <Typography
+        variant="caption"
+        fontWeight="medium"
+        color="text.secondary"
+        sx={{ mb: 0.5 }}
+      >
+        Coordenadas
+      </Typography>
+      <TextField
         value={`Lat: ${coordenadas.latitude}, Lon: ${coordenadas.longitude}`}
+        fullWidth
+        size="small"
         disabled
-        className="w-full border px-2 py-1 mb-4 bg-gray-100 text-gray-500 cursor-not-allowed"
+        InputProps={{ readOnly: true }}
+        sx={{
+          "& .MuiOutlinedInput-root": {
+            borderRadius: 2,
+            fontSize: "0.85rem",
+          },
+          "& input": {
+            padding: "8px 10px",
+          },
+        }}
       />
+    </Grid>
 
-      <label className="block font-semibold text-gray-700">Município</label>
-      <input
+    <Grid item xs={12} sm={4}>
+      <Typography
+        variant="caption"
+        fontWeight="medium"
+        color="text.secondary"
+        sx={{ mb: 0.5 }}
+      >
+        Município
+      </Typography>
+      <TextField
         value={municipio}
+        fullWidth
+        size="small"
         disabled
-        className="w-full border px-2 py-1 mb-4 bg-gray-100 text-gray-500 cursor-not-allowed"
+        InputProps={{ readOnly: true }}
+        sx={{
+          "& .MuiOutlinedInput-root": {
+            borderRadius: 2,
+            fontSize: "0.85rem",
+          },
+          "& input": {
+            padding: "8px 10px",
+          },
+        }}
       />
+    </Grid>
 
-      {["Boa Vista", "São Gabriel da Cachoeira", "Santa Isabel do Rio Negro", "Barcelos"].includes(municipio) && (
-        <div className="mb-4">
-          <label className="block font-semibold text-gray-700">Interno ou Externo?</label>
-          <select
-            value={localUnidade}
-            onChange={(e) => setLocalUnidade(e.target.value)}
-            className="w-full border px-2 py-1"
-          >
-            <option value="">Selecione...</option>
-            <option value="Sede">Sede da Unidade Desconcentrada</option>
-            <option value="Externo">Atendimento Externo</option>
-          </select>
-        </div>
-      )}
+    <Grid item xs={12} sm={4}>
+      <Typography
+        variant="caption"
+        fontWeight="medium"
+        color="text.secondary"
+        sx={{ mb: 0.5 }}
+      >
+        Data do Atendimento
+      </Typography>
+      <TextField
+        type="date"
+        value={dataAtendimento}
+        onChange={(e) => setDataAtendimento(e.target.value)}
+        fullWidth
+        size="small"
+        InputLabelProps={{ shrink: true }}
+        sx={{
+          "& .MuiOutlinedInput-root": {
+            borderRadius: 2,
+            fontSize: "0.85rem",
+          },
+          "& input": {
+            padding: "8px 10px",
+          },
+        }}
+      />
+    </Grid>
 
-      <div className="mb-4">
-      <label className="block font-semibold text-gray-700">Data do Atendimento</label>
-        <input
-          type="date"
-          className="w-full border px-2 py-1"
-          value={dataAtendimento}
-          onChange={(e) => setDataAtendimento(e.target.value)}
-        />
-    </div>
-
-      <div className="mb-4">
-        <label className="inline-flex items-center">
-          <input
-            type="checkbox"
+    <Grid item xs={12} sm={4} sx={{ display: "flex", alignItems: "center" }}>
+      <FormControlLabel
+        control={
+          <Checkbox
+            size="small"
             checked={precisaInterprete}
             onChange={(e) => setPrecisaInterprete(e.target.checked)}
-            className="mr-2"
           />
-          Necessita de intérprete
-        </label>
-      </div>
+        }
+        label={
+          <Typography variant="caption" sx={{ fontSize: "0.9rem" }}>
+            Necessita de intérprete
+          </Typography>
+        }
+        sx={{ mt: 3 }}
+      />
+    </Grid>
+  </Grid>
+</Box>
 
+<Box
+  sx={{
+    backgroundColor: "#ffffff",
+    borderRadius: 2,
+    border: "1px solid #E0E0E0",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+    p: 3,
+    mt: 2,
+  }}
+>
+  <Typography
+    variant="subtitle1"
+    fontWeight="bold"
+    gutterBottom
+    sx={{
+      fontSize: "1rem",
+      display: "flex",
+      alignItems: "center",
+      gap: 1,
+    }}
+  >
+    <span role="img" aria-label="user">👤</span> Pessoa Atendida
+  </Typography>
 
-
-      <fieldset className="border rounded p-4 mb-6">
-
-       <h3 className="text-xl font-bold mb-4">1. Informações do Atendido</h3>
-
-      <h4 className="text-lg font-semibold mt-6 mb-2">1.1 Nome da Pessoa Atendida</h4>
-      <input
+  <Grid container spacing={2}>
+    {/* Nome */}
+    <Grid item xs={12} sm={6}>
+      <Typography variant="caption" fontWeight="medium" color="text.secondary" sx={{ mb: 0.5 }}>
+        Nome da Pessoa Atendida
+      </Typography>
+      <TextField
+        placeholder="Digite o nome completo"
         value={nome}
         onChange={(e) => setNome(e.target.value)}
-        className="w-full border px-2 py-1 mb-4"
-        required
+        fullWidth
+        size="small"
+        sx={{
+          "& .MuiOutlinedInput-root": {
+            borderRadius: 2,
+            fontSize: "0.85rem",
+          },
+          "& input": {
+            padding: "8px 10px",
+          },
+        }}
       />
+    </Grid>
 
-      <h4 className="text-lg font-semibold mt-6 mb-2">1.2 Comunidade</h4>
-      <Select
-        options={comunidades}
-        onChange={setComunidadeSelecionada}
-        className="mb-4"
-      />
-        <button
-          type="button"
-          onClick={() => fetchComunidades(true)}
-          className="text-blue-600 text-sm underline mb-4"
-        >
-          🔄
-        </button>
+    {/* Comunidade */}
+ 
+    {/* Comunidade */}
+    <Grid item xs={12}>
+      <Typography variant="caption" fontWeight="medium" color="text.secondary" sx={{ mb: 0.5 }}>
+        Comunidade
+      </Typography>
+<Autocomplete
+  options={comunidades}
+  getOptionLabel={(option) => option.label}
+  isOptionEqualToValue={(option, value) => option.value === value.value}
+  value={comunidadeSelecionada}
+  onChange={(event, newValue) => setComunidadeSelecionada(newValue)}
+  renderOption={(props, option) => (
+    <li {...props} key={option.value}>
+      {option.label}
+    </li>
+  )}
+  renderInput={(params) => (
+    <TextField
+      {...params}
+      placeholder="Nome da comunidade"
+      variant="outlined"
+      size="small"
+    />
+  )}
+/>
 
-        {carregandoComunidades && (
-        <div className="flex items-center gap-2 text-sm text-gray-500 mt-2">
-          <div className="animate-spin h-4 w-4 border-2 border-t-transparent border-gray-500 rounded-full" />
-          Carregando comunidades...
-        </div>
-)}
 
-
-      {comunidadeSelecionada?.value === "outro" && (
-        <input
-          placeholder="Informe o nome da comunidade"
-          value={comunidadeManual}
-          onChange={(e) => setComunidadeManual(e.target.value)}
-          className="w-full border px-2 py-1 mb-4"
-        />
-      )}
 
       {comunidadeSelecionada && (
-      <div className="mb-4 text-sm text-gray-600">
-        <p><strong>Subpolo:</strong> {comunidadeSelecionada.subpolo?.nome_subpolo || "—"}</p>
-        <p><strong>Polo:</strong> {comunidadeSelecionada.subpolo?.polo?.nome_polo || "—"}</p>
-      </div>
-    )}
+        <Box mt={2}>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <Typography variant="caption" fontWeight="medium" color="text.secondary" sx={{ mb: 0.5 }}>
+                Subpolo
+              </Typography>
+              <TextField
+                value={comunidadeSelecionada.subpolo?.nome_subpolo || "—"}
+                fullWidth
+                size="small"
+                disabled
+                InputProps={{ readOnly: true }}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: 2,
+                    fontSize: "0.85rem",
+                  },
+                  "& input": {
+                    padding: "8px 10px",
+                  },
+                }}
+              />
+            </Grid>
 
-        <h4 className="text-lg font-semibold mt-6 mb-2">1.3 Número de Acompanhantes</h4>
-        <div className="flex gap-4 mb-4">
-          <div>
-            <label>Adultos</label>
-            <input
-              type="number"
-              min="0" 
-              value={adultos}
-              onChange={(e) => setAdultos(parseInt(e.target.value))}
-              className="w-full border px-2 py-1"
-            />
-          </div>
-        <div>
-          <label>Crianças</label>
-          <input
+            <Grid item xs={12} sm={6}>
+              <Typography variant="caption" fontWeight="medium" color="text.secondary" sx={{ mb: 0.5 }}>
+                Polo
+              </Typography>
+              <TextField
+                value={comunidadeSelecionada.subpolo?.polo?.nome_polo || "—"}
+                fullWidth
+                size="small"
+                disabled
+                InputProps={{ readOnly: true }}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: 2,
+                    fontSize: "0.85rem",
+                  },
+                  "& input": {
+                    padding: "8px 10px",
+                  },
+                }}
+              />
+            </Grid>
+          </Grid>
+        </Box>
+      )}
+
+      <Button
+        onClick={() => fetchComunidades(true)}
+        size="small"
+        variant="outlined"
+        sx={{ mt: 1 }}
+      >
+        🔄 Recarregar
+      </Button>
+    </Grid>
+
+    {/* Número de acompanhantes */}
+    <Grid item xs={12}>
+      <Typography variant="caption" fontWeight="medium" color="text.secondary" sx={{ mb: 0.5 }}>
+        Número de Acompanhantes
+      </Typography>
+      <Grid container spacing={2}>
+        <Grid item xs={12} sm={4}>
+          <TextField
+            label="Adultos"
             type="number"
-            min="0"
+            inputProps={{ min: 0 }}
+            value={adultos}
+            onChange={(e) => setAdultos(parseInt(e.target.value))}
+            fullWidth
+            size="small"
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                borderRadius: 2,
+                fontSize: "0.85rem",
+              },
+            }}
+          />
+        </Grid>
+        <Grid item xs={12} sm={4}>
+          <TextField
+            label="Crianças"
+            type="number"
+            inputProps={{ min: 0 }}
             value={criancas}
             onChange={(e) => setCriancas(parseInt(e.target.value))}
-            className="w-full border px-2 py-1"
+            fullWidth
+            size="small"
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                borderRadius: 2,
+                fontSize: "0.85rem",
+              },
+            }}
           />
-        </div>
-        <div>
-          <label>Idosos</label>
-          <input
+        </Grid>
+        <Grid item xs={12} sm={4}>
+          <TextField
+            label="Idosos"
             type="number"
-            min="0"
+            inputProps={{ min: 0 }}
             value={idosos}
             onChange={(e) => setIdosos(parseInt(e.target.value))}
-            className="w-full border px-2 py-1"
+            fullWidth
+            size="small"
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                borderRadius: 2,
+                fontSize: "0.85rem",
+              },
+            }}
           />
-        </div>
-      </div>
-          </fieldset>
-      <fieldset className="border p-4 rounded mb-6">
-        <h3 className="text-xl font-bold mt-8 mb-4">2. Informações de Deslocamento</h3>
-       <h4 className="text-lg font-semibold mt-6 mb-2">2.1 Modal de Deslocamento</h4>
-<fieldset className="mb-4">
-  <legend className="font-medium">Terrestre</legend>
-  {["A pé", "Carona", "Viatura Oficial", "Veículo Fretado", "Outros"].map((opcao) => (
-    <label key={opcao} className="block">
-      <input
-        type="checkbox"
-        checked={modalDeslocamento.terrestre.includes(opcao)}
-        onChange={() => toggleOption("terrestre", opcao)}
-      /> {opcao}
-    </label>
-  ))}
+        </Grid>
+      </Grid>
+    </Grid>
+  </Grid>
+</Box>
 
- {modalDeslocamento.terrestre.includes("Viatura Oficial") && (
-  <>
-    <label className="block text-sm font-medium mt-2">Órgão responsável:</label>
-    <select
-      className="border px-2 py-1 w-full mt-1"
-      value={opcaoOrgao.viatura}
-      onChange={(e) => {
-        const valor = e.target.value;
-        handleSelectOrgao("viatura", valor === "Outros" ? "" : valor);
-        setOpcaoOrgao((prev) => ({ ...prev, viatura: valor }));
-      }}
-    >
-      <option value="">Selecione o órgão</option>
-      {[...orgaosDisponiveis, "Outros"].map((opcao) => (
-        <option key={opcao} value={opcao}>{opcao}</option>
-      ))}
-    </select>
+<Box
+  sx={{
+    backgroundColor: "#ffffff",
+    borderRadius: 2,
+    border: "1px solid #E0E0E0",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+    p: 3,
+    mt: 2,
+  }}
+>
+  {/* Bloco II: Informações de Deslocamento */}
+  <Typography
+    variant="subtitle1"
+    fontWeight="bold"
+    gutterBottom
+    sx={{
+      fontSize: "1rem",
+      display: "flex",
+      alignItems: "center",
+      gap: 1,
+    }}
+  >
+    🚗 Modal de Deslocamento
+  </Typography>
 
-    {opcaoOrgao.viatura === "Outros" && (
-      <input
-        type="text"
-        placeholder="Órgão"
-        className="mt-2 border px-2 py-1 w-full"
-        value={orgaos.viatura}
-        onChange={(e) => setOrgaos((prev) => ({ ...prev, viatura: e.target.value }))}
-      />
-    )}
-  </>
-)}
+  <Typography
+    variant="caption"
+    fontWeight="medium"
+    color="text.secondary"
+    sx={{ mt: 2, mb: 1 }}
+  >
+    Selecione os Modais de Deslocamento:
+  </Typography>
 
-  {modalDeslocamento.terrestre.includes("Outros") && (
-    <input
-      type="text"
-      placeholder="Descreva o modal terrestre"
-      className="border px-2 py-1 w-full mt-2"
-      value={outrosModais.terrestre}
-      onChange={(e) =>
-        setOutrosModais((prev) => ({ ...prev, terrestre: e.target.value }))
-      }
-    />
-  )}
-</fieldset>
+  {/* Modal Terrestre */}
+  <Box sx={{ mt: 2 }}>
+    <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1 }}>
+      Modal Terrestre
+    </Typography>
 
-<fieldset className="mb-4">
-  <legend className="font-medium">Fluvial</legend>
-  {["Motor Rabeta", "Motor de Popa", "Embarcação Oficial", "Outros"].map((opcao) => (
-    <label key={opcao} className="block">
-      <input
-        type="checkbox"
-        checked={modalDeslocamento.fluvial.includes(opcao)}
-        onChange={() => toggleOption("fluvial", opcao)}
-      /> {opcao}
-    </label>
-  ))}
-
-  {modalDeslocamento.fluvial.includes("Embarcação Oficial") && (
-  <>
-    <label className="block text-sm font-medium mt-2">Órgão responsável:</label>
-    <select
-      className="border px-2 py-1 w-full mt-1"
-      value={opcaoOrgao.embarcacao}
-      onChange={(e) => {
-        const valor = e.target.value;
-        handleSelectOrgao("embarcacao", valor === "Outros" ? "" : valor);
-        setOpcaoOrgao((prev) => ({ ...prev, embarcacao: valor }));
-      }}
-    >
-      <option value="">Selecione o órgão</option>
-      {[...orgaosDisponiveis, "Outros"].map((opcao) => (
-        <option key={opcao} value={opcao}>{opcao}</option>
-      ))}
-    </select>
-
-    {opcaoOrgao.embarcacao === "Outros" && (
-      <input
-        type="text"
-        placeholder="Órgão"
-        className="mt-2 border px-2 py-1 w-full"
-        value={orgaos.embarcacao}
-        onChange={(e) => setOrgaos((prev) => ({ ...prev, embarcacao: e.target.value }))}
-      />
-    )}
-  </>
-)}
-
-
-
-  {modalDeslocamento.fluvial.includes("Outros") && (
-    <input
-      type="text"
-      placeholder="Descreva o modal fluvial"
-      className="border px-2 py-1 w-full mt-2"
-      value={outrosModais.fluvial}
-      onChange={(e) =>
-        setOutrosModais((prev) => ({ ...prev, fluvial: e.target.value }))
-      }
-    />
-  )}
-</fieldset>
-
-<fieldset className="mb-4">
-  <legend className="font-medium">Aéreo</legend>
-  {["Frete aéreo particular", "Frete aéreo Oficial", "Outros"].map((opcao) => (
-    <label key={opcao} className="block">
-      <input
-        type="checkbox"
-        checked={modalDeslocamento.aereo.includes(opcao)}
-        onChange={() => toggleOption("aereo", opcao)}
-        className="mr-2"
-      />
-      {opcao}
-    </label>
-  ))}
-
-  {modalDeslocamento.aereo.includes("Frete aéreo Oficial") && (
-  <>
-    <label className="block text-sm font-medium mt-2">Órgão responsável:</label>
-    <select
-      className="border px-2 py-1 w-full mt-1"
-      value={opcaoOrgao.freteOficial}
-      onChange={(e) => {
-        const valor = e.target.value;
-        handleSelectOrgao("freteOficial", valor === "Outros" ? "" : valor);
-        setOpcaoOrgao((prev) => ({ ...prev, freteOficial: valor }));
-      }}
-    >
-      <option value="">Selecione o órgão</option>
-      {[...orgaosDisponiveis, "Outros"].map((opcao) => (
-        <option key={opcao} value={opcao}>{opcao}</option>
-      ))}
-    </select>
-
-    {opcaoOrgao.freteOficial === "Outros" && (
-      <input
-        type="text"
-        placeholder="Órgão"
-        className="mt-2 border px-2 py-1 w-full"
-        value={orgaos.freteOficial}
-        onChange={(e) => setOrgaos((prev) => ({ ...prev, freteOficial: e.target.value }))}
-      />
-    )}
-  </>
-)}
-
-  {modalDeslocamento.aereo.includes("Outros") && (
-    <input
-      type="text"
-      placeholder="Descreva o modal aéreo"
-      className="border px-2 py-1 w-full mt-2"
-      value={outrosModais.aereo}
-      onChange={(e) =>
-        setOutrosModais((prev) => ({ ...prev, aereo: e.target.value }))
-      }
-    />
-  )}
-</fieldset>
-
-
-        <h4 className="text-lg font-semibold mt-6 mb-2">2.2 Tempo de Deslocamento</h4>
-        <Select
-          value={opcoesTempoDeslocamento.find(opt => opt.value === tempoDeslocamento)}
-          onChange={(selected) => setTempoDeslocamento(selected.value)}
-          options={opcoesTempoDeslocamento}
-          placeholder="Selecione..."
-          className="mb-4"
-        />
-        </fieldset>
-      <fieldset className="border p-4 rounded mb-6">
-      <div className="mb-6">
-      <h3 className="text-lg font-semibold mt-6 mb-2">3. Tipo de Atendimento</h3>
-        <Select
-          isMulti
-          value={tipoAtendimento.map(tipo => ({ value: tipo, label: tipo.charAt(0).toUpperCase() + tipo.slice(1) }))}
-          onChange={(selected) => setTipoAtendimento(selected.map(opt => opt.value))}
-          options={[
-            { value: "assistencia", label: "Assistência Social" },
-            { value: "previdencia", label: "Previdência Social" },
-            { value: "documentacao", label: "Documentação Civil" },
-            { value: "saude", label: "Atenção à Saude" },
-            { value: "alimentos", label: "Segurança Alimentar" },
-            { value: "outros", label: "Outros Atendimentos" },
-
-          ]}
-          className="w-full"
-        />
-      </div>
-
-      {tipoAtendimento.includes("assistencia") && (
-        <div>
-          <h4 className="text-lg font-semibold mt-6 mb-2">3.1 Assistência Social</h4>
-          {[{ id: "baixa", titulo: "Baixa Complexidade", opcoes: [
-            { key: "cadastro_unico", label: "Cadastro Único" },
-            { key: "pbf", label: "Programa Bolsa Família (PBF)" },
-            { key: "bpc", label: "Benefício de Prestação Continuada (BPC/LOAS)" },
-          ]},
-          { id: "media", titulo: "Média Complexidade", opcoes: [] },
-          { id: "alta", titulo: "Alta Complexidade", opcoes: [
-            { key: "acolhimento", label: "Unidade de Acolhimento Social" },
-          ]}].map(({ id, titulo, opcoes }) => (
-            <fieldset key={id} className="mb-4 border p-2 rounded">
-              <label className="font-medium block mb-1">
-                <input
-                  type="checkbox"
-                  checked={assistenciaSelecionada.includes(id)}
-                  onChange={() => toggleAssistencia(id)}
-                  className="mr-2"
-                />
-                {titulo}
-              </label>
-
-              {assistenciaSelecionada.includes(id) && opcoes.length > 0 && (
-                <div className="ml-6 mt-2 border-l pl-4 space-y-1">
-                  {opcoes.map(({ key, label }) => (
-                    <label key={key} className="block text-sm">
-                      <input
-                        type="checkbox"
-                        checked={assistenciaDetalhes?.[id]?.[key] || false}
-                        onChange={() => toggleAssistenciaSubopcao(id, key)}
-                        className="mr-2"
-                      />
-                      {label}
-                    </label>
-                  ))}
-                </div>
-              )}
-
-              {id === "baixa" && assistenciaDetalhes?.baixa?.bpc && (
-                <div className="ml-10 mt-2 border-l pl-4 space-y-1">
-                  {["meuInss", "requerimento", "consulta", "exigencia"].map((key) => (
-                    <label key={key} className="block text-sm ml-4">
-                      <input
-                        type="checkbox"
-                        checked={assistenciaDetalhes?.bpc?.[key] || false}
-                        onChange={() => toggleAssistenciaSubopcao("bpc", key)}
-                        className="mr-2"
-                      />
-                      {subopcoesPadrao.find((s) => s.key === key)?.label}
-                    </label>
-                  ))}
-                </div>
-              )}
-            </fieldset>
-          ))}
-
-          <div className="mb-4">
-            <label className="block font-semibold">Outros:</label>
-            <input
-              type="text"
-              className="w-full border px-2 py-1"
-              value={assistenciaDetalhes.outros}
-              onChange={(e) =>
-                setAssistenciaDetalhes((prev) => ({ ...prev, outros: e.target.value }))
-              }
+    <FormGroup sx={{ flexDirection: "column", gap: 1 }}>
+      {["A pé", "Carona", "Viatura Oficial", "Veículo Fretado", "Outros"].map((opcao) => (
+        <FormControlLabel
+          key={opcao}
+          control={
+            <Checkbox
+              checked={modalDeslocamento.terrestre.includes(opcao)}
+              onChange={() => toggleOption("terrestre", opcao)}
+              size="small"
+              sx={{
+                color: "#2E7D32",
+                '&.Mui-checked': {
+                  color: "#2E7D32",
+                },
+              }}
             />
-          </div>
-        </div>
-      )}
- 
-          {tipoAtendimento.includes("previdencia") && (
-        <div>
-          <h4 className="text-lg font-semibold mt-6 mb-2">3.2 Previdência Social</h4>
-          {["salario_maternidade", "aposentadoria", "pensao_morte", "auxilio_incapacidade", "auxilio_reclusao"].map((id) => (
-            <fieldset key={id} className="mb-4 border p-2 rounded">
-              <label className="font-medium block mb-1">
-                <input
-                  type="checkbox"
-                  checked={previdenciaSelecionada.includes(id)}
-                  onChange={() => togglePrevidencia(id)}
-                  className="mr-2"
-                />
-                {id.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
-              </label>
+          }
+          label={<Typography sx={{ fontSize: "0.85rem" }}>{opcao}</Typography>}
+        />
+      ))}
+    </FormGroup>
 
-              {previdenciaSelecionada.includes(id) && (
-                <div className="ml-6 mt-2 border-l pl-4 space-y-1">
-                  {[
-                    { key: "cear", label: "Preenchimento de Certidão de Exercício de Atividade Rural (CEAR)" },
-                    { key: "meuInss", label: "Cadastro Meu INSS" },
-                    { key: "requerimento", label: "Abertura de requerimento" },
-                    { key: "consulta", label: "Consulta" },
-                    { key: "exigencia", label: "Cumprimento de Exigência" }
-                  ].map(({ key, label }) => (
-                    <label key={key} className="block text-sm">
-                      <input
-                        type="checkbox"
-                        checked={previdenciaDetalhes?.[id]?.[key] || false}
-                        onChange={() => toggleSubopcao(id, key)}
-                        className="mr-2"
-                      />
-                      {label}
-                    </label>
-                  ))}
-                </div>
-              )}
-            </fieldset>
+    {modalDeslocamento.terrestre.includes("Viatura Oficial") && (
+      <Box ml={4} mt={2}>
+        <Typography variant="body2" fontWeight="medium" sx={{ mb: 1 }}>
+          Órgão responsável:
+        </Typography>
+
+        <TextField
+          select
+          fullWidth
+          size="small"
+          value={opcaoOrgao.viatura}
+          onChange={(e) => {
+            const valor = e.target.value;
+            handleSelectOrgao("viatura", valor === "Outros" ? "" : valor);
+            setOpcaoOrgao((prev) => ({ ...prev, viatura: valor }));
+          }}
+          sx={{
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 2,
+              fontSize: "0.85rem",
+            },
+          }}
+        >
+          <MenuItem value="">Selecione o órgão</MenuItem>
+          {[...orgaosDisponiveis, "Outros"].map((opcao) => (
+            <MenuItem key={opcao} value={opcao}>
+              {opcao}
+            </MenuItem>
           ))}
-                  </div>
-      )}
+        </TextField>
 
-       {tipoAtendimento.includes("documentacao") && (
-        <div>
-          <h4 className="text-lg font-semibold mt-6 mb-2">3.3 Documentação Civil</h4>
-          {["nascido_vivo", "registro_nascimento", "registro_obito", "cpf", "cin", "titulo_eleitor", "reservista"].map((id) => (
-            <fieldset key={id} className="mb-4 border p-2 rounded">
-              <label className="font-medium block mb-1">
-                <input
-                  type="checkbox"
-                  checked={documentacaoSelecionada.includes(id)}
-                  onChange={() => toggleDocumentacao(id)}
-                  className="mr-2"
-                />
-                {({
-                  nascido_vivo: "Declaração de Nascido Vivo",
-                  registro_nascimento: "Registro Civil Nascimento",
-                  registro_obito: "Registro Civil de Óbito",
-                  cpf: "Cadastro de Pessoa Física (CPF)",
-                  cin: "Carteira de Identidade Nacional (CIN)",
-                  titulo_eleitor: "Título de Eleitor",
-                  reservista: "Certificado de Reservista ou Dispensa de Incorporação (CDI)"
-                })[id]}
-              </label>
+        {opcaoOrgao.viatura === "Outros" && (
+          <TextField
+            fullWidth
+            size="small"
+            placeholder="Órgão"
+            value={orgaos.viatura}
+            onChange={(e) =>
+              setOrgaos((prev) => ({ ...prev, viatura: e.target.value }))
+            }
+            sx={{
+              mt: 2,
+              "& .MuiOutlinedInput-root": {
+                borderRadius: 2,
+                fontSize: "0.85rem",
+              },
+              "& input": {
+                padding: "8px 10px",
+              },
+            }}
+          />
+        )}
+      </Box>
+    )}
 
-              {documentacaoSelecionada.includes(id) && (
-                <div className="ml-6 mt-2 border-l pl-4 space-y-1">
-                    {[
-                      "Primeira Via",
-                      "Segunda Via",
-                      ...(["registro_nascimento", "registro_obito"].includes(id) ? ["Registro Tardio"] : []),
-                      "Retificação",
-                      "Boletim de Ocorrência para Perda ou Roubo de Documentos"
-                    ].map((sub, idx) => (
-                      <label key={idx} className="block text-sm">
-                        <input
-                            type="checkbox"
-                            checked={documentacaoDetalhes?.[id]?.[sub] || false}
-                            onChange={() => toggleSubopcaoDocumentacao(id, sub)}
-                            className="mr-2"
-                          />
-                        {sub}
-                      </label>
-                  ))}
-                </div>
-              )}
-            </fieldset>
-          ))}
+    {modalDeslocamento.terrestre.includes("Outros") && (
+      <Box ml={4} mt={2}>
+        <TextField
+          fullWidth
+          size="small"
+          placeholder="Descreva o modal terrestre"
+          value={outrosModais.terrestre}
+          onChange={(e) =>
+            setOutrosModais((prev) => ({ ...prev, terrestre: e.target.value }))
+          }
+          sx={{
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 2,
+              fontSize: "0.85rem",
+            },
+            "& input": {
+              padding: "8px 10px",
+            },
+          }}
+        />
+      </Box>
+    )}
+  </Box>
 
-          <div className="mb-4">
-            <label className="block font-semibold">Outros:</label>
-            <input
-              type="text"
-              className="w-full border px-2 py-1"
-              value={documentacaoDetalhes.outros || ""}
-              onChange={(e) =>
-                setDocumentacaoDetalhes((prev) => ({ ...prev, outros: e.target.value }))
-              }
+  {/* Modal Fluvial */}
+  <Box sx={{ mt: 4 }}>
+    <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1 }}>
+      Modal Fluvial
+    </Typography>
+
+    <FormGroup sx={{ flexDirection: "column", gap: 1 }}>
+      {["Motor Rabeta", "Motor de Popa", "Embarcação Oficial", "Outros"].map((opcao) => (
+        <FormControlLabel
+          key={opcao}
+          control={
+            <Checkbox
+              checked={modalDeslocamento.fluvial.includes(opcao)}
+              onChange={() => toggleOption("fluvial", opcao)}
+              size="small"
+              sx={{
+                color: "#2E7D32",
+                '&.Mui-checked': {
+                  color: "#2E7D32",
+                },
+              }}
             />
-          </div>
-        </div>
-          )}
-      {tipoAtendimento.includes("saude") && (
-            <div>
-              <h4 className="text-lg font-semibold mt-6 mb-2">3.4 Atenção à Saúde</h4>
-              {["ubs", "hospital", "dsei_y", "caps"].map((id) => (
-                <label key={id} className="block text-sm mb-1">
-                  <input
-                    type="checkbox"
-                    checked={saudeSelecionada.includes(id)}
-                    onChange={() => toggleSaude(id)}
-                    className="mr-2"
-                  />
-                  {({
-                    ubs: "Unidade Básica de Saúde (UBS)",
-                    hospital: "Hospital",
-                    dsei_y: "Distrito Sanitário Especial Indígena Yanomami (DSEI-Y)",
-                    caps: "Centro de Atenção Psicossocial (CAPS)"
-                  })[id]}
-                </label>
+          }
+          label={<Typography sx={{ fontSize: "0.85rem" }}>{opcao}</Typography>}
+        />
+      ))}
+    </FormGroup>
+
+    {modalDeslocamento.fluvial.includes("Embarcação Oficial") && (
+      <Box ml={4} mt={2}>
+        <Typography variant="body2" fontWeight="medium" sx={{ mb: 1 }}>
+          Órgão responsável:
+        </Typography>
+
+        <TextField
+          select
+          fullWidth
+          size="small"
+          value={opcaoOrgao.embarcacao}
+          onChange={(e) => {
+            const valor = e.target.value;
+            handleSelectOrgao("embarcacao", valor === "Outros" ? "" : valor);
+            setOpcaoOrgao((prev) => ({ ...prev, embarcacao: valor }));
+          }}
+          sx={{
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 2,
+              fontSize: "0.85rem",
+            },
+          }}
+        >
+          <MenuItem value="">Selecione o órgão</MenuItem>
+          {[...orgaosDisponiveis, "Outros"].map((opcao) => (
+            <MenuItem key={opcao} value={opcao}>
+              {opcao}
+            </MenuItem>
+          ))}
+        </TextField>
+
+        {opcaoOrgao.embarcacao === "Outros" && (
+          <TextField
+            fullWidth
+            size="small"
+            placeholder="Órgão"
+            value={orgaos.embarcacao}
+            onChange={(e) =>
+              setOrgaos((prev) => ({ ...prev, embarcacao: e.target.value }))
+            }
+            sx={{
+              mt: 2,
+              "& .MuiOutlinedInput-root": {
+                borderRadius: 2,
+                fontSize: "0.85rem",
+              },
+              "& input": {
+                padding: "8px 10px",
+              },
+            }}
+          />
+        )}
+      </Box>
+    )}
+
+    {modalDeslocamento.fluvial.includes("Outros") && (
+      <Box ml={4} mt={2}>
+        <TextField
+          fullWidth
+          size="small"
+          placeholder="Descreva o modal fluvial"
+          value={outrosModais.fluvial}
+          onChange={(e) =>
+            setOutrosModais((prev) => ({ ...prev, fluvial: e.target.value }))
+          }
+          sx={{
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 2,
+              fontSize: "0.85rem",
+            },
+            "& input": {
+              padding: "8px 10px",
+            },
+          }}
+        />
+      </Box>
+    )}
+  </Box>
+
+  {/* Modal Aéreo */}
+  <Box sx={{ mt: 4 }}>
+    <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1 }}>
+      Modal Aéreo
+    </Typography>
+
+    <FormGroup sx={{ flexDirection: "column", gap: 1 }}>
+      {["Frete aéreo particular", "Frete aéreo Oficial", "Outros"].map((opcao) => (
+        <FormControlLabel
+          key={opcao}
+          control={
+            <Checkbox
+              checked={modalDeslocamento.aereo.includes(opcao)}
+              onChange={() => toggleOption("aereo", opcao)}
+              size="small"
+              sx={{
+                color: "#2E7D32",
+                '&.Mui-checked': {
+                  color: "#2E7D32",
+                },
+              }}
+            />
+          }
+          label={<Typography sx={{ fontSize: "0.85rem" }}>{opcao}</Typography>}
+        />
+      ))}
+    </FormGroup>
+
+    {modalDeslocamento.aereo.includes("Frete aéreo Oficial") && (
+      <Box ml={4} mt={2}>
+        <Typography variant="body2" fontWeight="medium" sx={{ mb: 1 }}>
+          Órgão responsável:
+        </Typography>
+
+        <TextField
+          select
+          fullWidth
+          size="small"
+          value={opcaoOrgao.freteOficial}
+          onChange={(e) => {
+            const valor = e.target.value;
+            handleSelectOrgao("freteOficial", valor === "Outros" ? "" : valor);
+            setOpcaoOrgao((prev) => ({ ...prev, freteOficial: valor }));
+          }}
+          sx={{
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 2,
+              fontSize: "0.85rem",
+            },
+          }}
+        >
+          <MenuItem value="">Selecione o órgão</MenuItem>
+          {[...orgaosDisponiveis, "Outros"].map((opcao) => (
+            <MenuItem key={opcao} value={opcao}>
+              {opcao}
+            </MenuItem>
+          ))}
+        </TextField>
+
+        {opcaoOrgao.freteOficial === "Outros" && (
+          <TextField
+            fullWidth
+            size="small"
+            placeholder="Órgão"
+            value={orgaos.freteOficial}
+            onChange={(e) =>
+              setOrgaos((prev) => ({ ...prev, freteOficial: e.target.value }))
+            }
+            sx={{
+              mt: 2,
+              "& .MuiOutlinedInput-root": {
+                borderRadius: 2,
+                fontSize: "0.85rem",
+              },
+              "& input": {
+                padding: "8px 10px",
+              },
+            }}
+          />
+        )}
+      </Box>
+    )}
+
+    {modalDeslocamento.aereo.includes("Outros") && (
+      <Box ml={4} mt={2}>
+        <TextField
+          fullWidth
+          size="small"
+          placeholder="Descreva o modal aéreo"
+          value={outrosModais.aereo}
+          onChange={(e) =>
+            setOutrosModais((prev) => ({ ...prev, aereo: e.target.value }))
+          }
+          sx={{
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 2,
+              fontSize: "0.85rem",
+            },
+            "& input": {
+              padding: "8px 10px",
+            },
+          }}
+        />
+      </Box>
+    )}
+  </Box>
+
+  {/* Tempo de Deslocamento */}
+  <Box sx={{ mt: 4 }}>
+    <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 1 }}>
+      Tempo de Deslocamento (em períodos)
+    </Typography>
+
+    <Autocomplete
+      options={opcoesTempoDeslocamento}
+      getOptionLabel={(option) => option.label}
+      value={opcoesTempoDeslocamento.find((opt) => opt.value === tempoDeslocamento)}
+      onChange={(event, newValue) => setTempoDeslocamento(newValue?.value || "")}
+      size="small"
+      fullWidth
+      renderInput={(params) => (
+        <TextField
+          {...params}
+          placeholder="Selecione o tempo de deslocamento"
+          variant="outlined"
+          sx={{
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 2,
+              fontSize: "0.85rem",
+            },
+            "& input": {
+              padding: "8px 10px",
+            },
+          }}
+        />
+      )}
+    />
+  </Box>
+</Box>
+
+
+<Box
+  sx={{
+    backgroundColor: "#ffffff",
+    borderRadius: 2,
+    border: "1px solid #E0E0E0",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+    p: 3,
+    mt: 2,
+  }}
+>
+  <Typography
+    variant="subtitle1"
+    fontWeight="bold"
+    gutterBottom
+    sx={{
+      fontSize: "1rem",
+      display: "flex",
+      alignItems: "center",
+      gap: 1,
+    }}
+  >
+    📝 Tipo de Atendimento
+  </Typography>
+
+  <Autocomplete
+    multiple
+    options={[
+      { value: "assistencia", label: "Assistência Social" },
+      { value: "previdencia", label: "Previdência Social" },
+      { value: "documentacao", label: "Documentação Civil" },
+      { value: "saude", label: "Atenção à Saúde" },
+      { value: "alimentos", label: "Segurança Alimentar" },
+      { value: "outros", label: "Outros Atendimentos" },
+    ].filter((opt) => !tipoAtendimento.includes(opt.value))}
+    getOptionLabel={(option) => option.label}
+    value={tipoAtendimento.map((tipo) => ({
+      value: tipo,
+      label:
+        {
+          assistencia: "Assistência Social",
+          previdencia: "Previdência Social",
+          documentacao: "Documentação Civil",
+          saude: "Atenção à Saúde",
+          alimentos: "Segurança Alimentar",
+          outros: "Outros Atendimentos",
+        }[tipo] || tipo,
+    }))}
+    onChange={(event, newValue) => {
+      setTipoAtendimento(newValue.map((opt) => opt.value));
+    }}
+    renderInput={(params) => (
+      <TextField
+        {...params}
+        placeholder="Selecione os tipos de atendimento"
+        variant="outlined"
+        size="small"
+        fullWidth
+        sx={{
+          "& .MuiOutlinedInput-root": {
+            borderRadius: 2,
+            fontSize: "0.85rem",
+          },
+          "& input": {
+            padding: "8px 10px",
+          },
+        }}
+      />
+    )}
+  />
+
+
+  {/* Assistência Social */}
+{tipoAtendimento.includes("assistencia") && (
+  <Box mt={3}>
+    <Typography variant="subtitle2" fontWeight="bold" gutterBottom sx={{ fontSize: "0.95rem" }}>
+    🤝 3.1 Assistência Social
+    </Typography>
+
+    {[
+      {
+        id: "baixa",
+        titulo: "Baixa Complexidade",
+        opcoes: [
+          { key: "cadastro_unico", label: "Cadastro Único" },
+          { key: "pbf", label: "Programa Bolsa Família (PBF)" },
+          { key: "bpc", label: "Benefício de Prestação Continuada (BPC/LOAS)" },
+        ],
+      },
+      {
+        id: "media",
+        titulo: "Média Complexidade",
+        opcoes: [],
+      },
+      {
+        id: "alta",
+        titulo: "Alta Complexidade",
+        opcoes: [
+          { key: "acolhimento", label: "Unidade de Acolhimento Social" },
+        ],
+      },
+    ].map(({ id, titulo, opcoes }) => (
+      <Box
+        key={id}
+        sx={{
+          border: "1px solid #E0E0E0",
+          borderRadius: 2,
+          p: 2,
+          mb: 2,
+        }}
+      >
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={assistenciaSelecionada.includes(id)}
+              onChange={() => toggleAssistencia(id)}
+              size="small"
+              sx={{
+                color: "#2E7D32",
+                '&.Mui-checked': {
+                  color: "#2E7D32",
+                },
+              }}
+            />
+          }
+          label={<Typography sx={{ fontSize: "0.9rem" }}>{titulo}</Typography>}
+        />
+
+        {/* Subopções */}
+        {assistenciaSelecionada.includes(id) && opcoes.length > 0 && (
+          <Box ml={4} mt={1}>
+            <FormGroup sx={{ flexDirection: "column", gap: 1 }}>
+              {opcoes.map(({ key, label }) => (
+                <FormControlLabel
+                  key={key}
+                  control={
+                    <Checkbox
+                      checked={assistenciaDetalhes?.[id]?.[key] || false}
+                      onChange={() => toggleAssistenciaSubopcao(id, key)}
+                      size="small"
+                      sx={{
+                        color: "#2E7D32",
+                        '&.Mui-checked': {
+                          color: "#2E7D32",
+                        },
+                      }}
+                    />
+                  }
+                  label={<Typography sx={{ fontSize: "0.85rem" }}>{label}</Typography>}
+                />
               ))}
+            </FormGroup>
+          </Box>
+        )}
 
-              <div className="mt-2 mb-4">
-                <label className="block font-semibold">Outros:</label>
-                <input
-                  type="text"
-                  className="w-full border px-2 py-1"
-                  value={saudeDetalhes.outros || ""}
-                  onChange={(e) =>
-                    setSaudeDetalhes((prev) => ({ ...prev, outros: e.target.value }))
+        {/* Sub-subopções do BPC */}
+        {id === "baixa" && assistenciaDetalhes?.baixa?.bpc && (
+          <Box ml={6} mt={1}>
+            <FormGroup sx={{ flexDirection: "column", gap: 1 }}>
+              {["meuInss", "requerimento", "consulta", "exigencia"].map((key) => (
+                <FormControlLabel
+                  key={key}
+                  control={
+                    <Checkbox
+                      checked={assistenciaDetalhes?.bpc?.[key] || false}
+                      onChange={() => toggleAssistenciaSubopcao("bpc", key)}
+                      size="small"
+                      sx={{
+                        color: "#2E7D32",
+                        '&.Mui-checked': {
+                          color: "#2E7D32",
+                        },
+                      }}
+                    />
+                  }
+                  label={
+                    <Typography sx={{ fontSize: "0.8rem" }}>
+                      {{
+                        meuInss: "Cadastro Meu INSS",
+                        requerimento: "Abertura de requerimento",
+                        consulta: "Consulta",
+                        exigencia: "Cumprimento de Exigência",
+                      }[key]}
+                    </Typography>
                   }
                 />
-              </div>
-            </div>
-          )}
-       {tipoAtendimento.includes("alimentos") && (
-        <div>
-          <h4 className="text-lg font-semibold mt-6 mb-2">3.5 Segurança Alimentar</h4>
-          {["cesta", "refeicao", "restaurante", "encaminhamento"].map((id) => (
-            <label key={id} className="block text-sm mb-1">
-              <input
-                type="checkbox"
-                checked={segAlimentarSelecionada.includes(id)}
-                onChange={() => toggleSegAlimentar(id)}
-                className="mr-2"
-              />
-              {{
-                cesta: "Entrega de cesta alimentar",
-                refeicao: "Entrega de refeição pronta",
-                restaurante: "Restaurante Comunitário",
-                encaminhamento: "Encaminhamento para Rede Socioassistencial",
-              }[id]}
-            </label>
-          ))}
+              ))}
+            </FormGroup>
+          </Box>
+        )}
+      </Box>
+    ))}
 
-          {segAlimentarSelecionada.includes("cesta") && (
-            <div className="ml-6 my-2">
-              <label className="text-sm block">Quantidade de cestas:</label>
-              <input
-                type="number"
-                value={segAlimentarDetalhes.cesta || 0}
-                onChange={(e) => setSegAlimentarDetalhes((prev) => ({ ...prev, cesta: parseInt(e.target.value) }))}
-                className="w-full border px-2 py-1"
-              />
-            </div>
-          )}
+    {/* Campo de texto "Outros" */}
+    <Box>
+      <Typography variant="body2" fontWeight="bold" gutterBottom>
+        Outros:
+      </Typography>
+      <TextField
+        fullWidth
+        value={assistenciaDetalhes.outros}
+        onChange={(e) =>
+          setAssistenciaDetalhes((prev) => ({ ...prev, outros: e.target.value }))
+        }
+        placeholder="Especificar"
+        size="small"
+        sx={{
+          "& .MuiOutlinedInput-root": {
+            borderRadius: 2,
+            fontSize: "0.85rem",
+          },
+          "& input": {
+            padding: "8px 10px",
+          },
+        }}
+      />
+    </Box>
+  </Box>
+)}
 
-          {segAlimentarSelecionada.includes("refeicao") && (
-            <div className="ml-6 my-2">
-              <label className="text-sm block">Quantidade de refeições:</label>
-              <input
-                type="number"
-                value={segAlimentarDetalhes.refeicao || 0}
-                onChange={(e) => setSegAlimentarDetalhes((prev) => ({ ...prev, refeicao: parseInt(e.target.value) }))}
-                className="w-full border px-2 py-1"
-              />
-            </div>
-          )}
 
-          <div className="mt-2 mb-4">
-            <label className="block font-semibold">Outros:</label>
-            <input
-              type="text"
-              className="w-full border px-2 py-1"
-              value={segAlimentarDetalhes.outros || ""}
-              onChange={(e) =>
-                setSegAlimentarDetalhes((prev) => ({ ...prev, outros: e.target.value }))
-              }
-            />
-          </div>
-        </div>
-      )}
-     {tipoAtendimento.includes("outros") && (
-        <div>
-          <h4 className="text-lg font-semibold mt-6 mb-2">3.6 Outros Atendimentos</h4>
+{tipoAtendimento.includes("previdencia") && (
+  <Box sx={{ mt: 4 }}>
+    <Typography
+      variant="subtitle1"
+      fontWeight="bold"
+      gutterBottom
+      sx={{ fontSize: "1rem" }}
+    >
+      🏫 3.2 Previdência Social
+    </Typography>
 
-          <fieldset className="mb-4 border p-2 rounded">
-            <label className="block font-medium mb-1">
-              <input type="checkbox" checked={outrosDetalhes.insumos} onChange={() => toggleOutros("insumos")} className="mr-2" />
-              Entrega de insumos
-            </label>
-
-            {outrosDetalhes.insumos && (
-              <div className="ml-6">
-                <label className="block">
-                  <input type="checkbox" checked={outrosDetalhes.rede_dormir} onChange={() => toggleOutros("rede_dormir")} className="mr-2" />
-                  Rede de Dormir
-                </label>
-                {outrosDetalhes.rede_dormir && (
-                  <div className="ml-6">
-                    <label className="block text-sm font-medium">Quantidade:</label>
-                    <input type="number" className="border px-2 py-1 w-full" value={outrosDetalhes.rede_dormir_qtd || 0} onChange={(e) => setOutrosDetalhes((prev) => ({ ...prev, rede_dormir_qtd: parseInt(e.target.value) }))} />
-                  </div>
-                )}
-
-                <label className="block mt-2">
-                  <input type="checkbox" checked={outrosDetalhes.outros} onChange={() => toggleOutros("outros")} className="mr-2" />
-                  Outros
-                </label>
-                {outrosDetalhes.outros && (
-                  <div className="ml-6">
-                    <label className="block text-sm font-medium">Descrição:</label>
-                    <input type="text" className="border px-2 py-1 w-full" value={outrosDetalhes.outros_desc} onChange={(e) => setOutrosDetalhes((prev) => ({ ...prev, outros_desc: e.target.value }))} />
-                    <label className="block text-sm font-medium mt-2">Quantidade:</label>
-                    <input type="number" className="border px-2 py-1 w-full" value={outrosDetalhes.outros_qtd || 0} onChange={(e) => setOutrosDetalhes((prev) => ({ ...prev, outros_qtd: parseInt(e.target.value) }))} />
-                  </div>
-                )}
-              </div>
-            )}
-          </fieldset>
-
-          <fieldset className="mb-4 border p-2 rounded">
-            <label className="block font-medium mb-1">
-              <input type="checkbox" checked={outrosDetalhes.acompanhamento} onChange={() => toggleOutros("acompanhamento")} className="mr-2" />
-              Acompanhamento
-            </label>
-            {outrosDetalhes.acompanhamento && (
-              <div className="ml-6">
-                <label className="block"><input type="checkbox" checked={outrosDetalhes.banco} onChange={() => toggleOutros("banco")} className="mr-2" /> Instituição bancária</label>
-                <label className="block"><input type="checkbox" checked={outrosDetalhes.comercio} onChange={() => toggleOutros("comercio")} className="mr-2" /> Estabelecimento comercial</label>
-                <label className="block"><input type="checkbox" checked={outrosDetalhes.delegacia} onChange={() => toggleOutros("delegacia")} className="mr-2" /> Delegacia</label>
-              </div>
-            )}
-          </fieldset>
-            <fieldset className="mb-4 border p-1 rounded">
-              <label className="font-medium block mb-1">
-                <input
-                  type="checkbox"
-                  checked={outrosDetalhes.artesanato}
-                  onChange={() => toggleOutros("artesanato")}
-                  className="mr-2"
-                />
-                Apoio na venda de artesanatos e outros produtos
-              </label>
-            </fieldset>
-
-          <fieldset className="mt-4 border p-2 rounded">
-            <label className="block font-medium mb-1">
-              <input type="checkbox" checked={outrosDetalhes.apoio_logistico} onChange={() => toggleOutros("apoio_logistico")} className="mr-2" />
-              Apoio logístico de retorno
-            </label>
-            {outrosDetalhes.apoio_logistico && (
-              <div className="ml-6">
-                <label className="block">
-                  <input type="checkbox" checked={outrosDetalhes.combustivel} onChange={() => toggleOutros("combustivel")} className="mr-2" />
-                  Fornecimento de combustível
-                </label>
-                {outrosDetalhes.combustivel && (
-                  <div className="ml-6">
-                    <label className="block text-sm font-medium">Quantidade de litros:</label>
-                    <input type="number" className="border px-2 py-1 w-full" value={outrosDetalhes.combustivel_qtd || 0} onChange={(e) => setOutrosDetalhes((prev) => ({ ...prev, combustivel_qtd: parseInt(e.target.value) }))} />
-                  </div>
-                )}
-                <label className="block"><input type="checkbox" checked={outrosDetalhes.deslocamento_aereo} onChange={() => toggleOutros("deslocamento_aereo")} className="mr-2" /> Deslocamento aéreo</label>
-                <label className="block"><input type="checkbox" checked={outrosDetalhes.deslocamento_terrestre} onChange={() => toggleOutros("deslocamento_terrestre")} className="mr-2" /> Deslocamento terrestre</label>
-                <label className="block"><input type="checkbox" checked={outrosDetalhes.deslocamento_fluvial} onChange={() => toggleOutros("deslocamento_fluvial")} className="mr-2" /> Deslocamento fluvial</label>
-              </div>
-            )}
-          </fieldset>
-        </div>
-      )}
-        </fieldset>
-      <fieldset className="border rounded p-4 mb-6">
-       <h3 className="text-lg font-semibold mt-6 mb-2">4. Observações</h3>
-      <textarea
-        className="w-full border px-3 py-2"
-        rows="4"
-        placeholder="Escreva aqui observações adicionais..."
-        value={observacoes}
-        onChange={(e) => setObservacoes(e.target.value)}
-      ></textarea>
-              </fieldset>
-
-      <button
-        onClick={handleSubmit}
-        disabled={isSubmitting}
-        className={`mt-6 px-4 py-2 rounded text-white transition-all duration-200 ${
-          isSubmitting
-            ? "bg-gray-400 cursor-not-allowed pointer-events-none"
-            : "bg-blue-600 hover:bg-blue-700"
-        }`}
+    {["salario_maternidade", "aposentadoria", "pensao_morte", "auxilio_incapacidade", "auxilio_reclusao"].map((id) => (
+      <Box
+        key={id}
+        sx={{
+          border: "1px solid #ccc",
+          borderRadius: 2,
+          p: 2,
+          mb: 2,
+        }}
       >
-        {isSubmitting ? "Enviando..." : "Enviar Formulário"}
-      </button>
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={previdenciaSelecionada.includes(id)}
+              onChange={() => togglePrevidencia(id)}
+              sx={{
+                color: "#2E7D32",
+                '&.Mui-checked': {
+                  color: "#2E7D32",
+                },
+              }}
+            />
+          }
+          label={
+            <Typography sx={{ fontSize: "0.9rem" }}>
+              {id.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+            </Typography>
+          }
+        />
 
-      
+        {previdenciaSelecionada.includes(id) && (
+          <Box sx={{ ml: 3, mt: 1 }}>
+            <FormGroup sx={{ gap: 1 }}>
+              {[
+                {
+                  key: "cear",
+                  label:
+                    "Preenchimento de Certidão de Exercício de Atividade Rural (CEAR)",
+                },
+                { key: "meuInss", label: "Cadastro Meu INSS" },
+                { key: "requerimento", label: "Abertura de requerimento" },
+                { key: "consulta", label: "Consulta" },
+                { key: "exigencia", label: "Cumprimento de Exigência" },
+              ].map(({ key, label }) => (
+                <FormControlLabel
+                  key={key}
+                  control={
+                    <Checkbox
+                      checked={previdenciaDetalhes?.[id]?.[key] || false}
+                      onChange={() => toggleSubopcao(id, key)}
+                      size="small"
+                      sx={{
+                        color: "#2E7D32",
+                        '&.Mui-checked': {
+                          color: "#2E7D32",
+                        },
+                      }}
+                    />
+                  }
+                  label={<Typography sx={{ fontSize: "0.85rem" }}>{label}</Typography>}
+                />
+              ))}
+            </FormGroup>
+          </Box>
+        )}
+      </Box>
+    ))}
+  </Box>
+)}
+
+
+
+{tipoAtendimento.includes("documentacao") && (
+  <Box sx={{ mt: 4 }}>
+    <Typography
+      variant="subtitle1"
+      fontWeight="bold"
+      gutterBottom
+      sx={{ fontSize: "1rem" }}
+    >
+      📄 3.3 Documentação Civil
+    </Typography>
+
+    {["nascido_vivo", "registro_nascimento", "registro_obito", "cpf", "cin", "titulo_eleitor", "reservista"].map((id) => (
+      <Box
+        key={id}
+        sx={{
+          border: "1px solid #ccc",
+          borderRadius: 2,
+          p: 2,
+          mb: 2,
+        }}
+      >
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={documentacaoSelecionada.includes(id)}
+              onChange={() => toggleDocumentacao(id)}
+              sx={{
+                color: "#2E7D32",
+                '&.Mui-checked': {
+                  color: "#2E7D32",
+                },
+              }}
+            />
+          }
+          label={
+            <Typography sx={{ fontSize: "0.9rem" }}>
+              {{
+                nascido_vivo: "Declaração de Nascido Vivo",
+                registro_nascimento: "Registro Civil Nascimento",
+                registro_obito: "Registro Civil de Óbito",
+                cpf: "Cadastro de Pessoa Física (CPF)",
+                cin: "Carteira de Identidade Nacional (CIN)",
+                titulo_eleitor: "Título de Eleitor",
+                reservista: "Certificado de Reservista ou Dispensa de Incorporação (CDI)"
+              }[id]}
+            </Typography>
+          }
+        />
+
+        {documentacaoSelecionada.includes(id) && (
+          <Box sx={{ ml: 3, mt: 1 }}>
+            <FormGroup sx={{ gap: 1 }}>
+              {["Primeira Via", "Segunda Via", ...(id === "registro_nascimento" || id === "registro_obito" ? ["Registro Tardio"] : []), "Retificação", "Boletim de Ocorrência para Perda ou Roubo de Documentos"].map((sub, idx) => (
+                <FormControlLabel
+                  key={idx}
+                  control={
+                    <Checkbox
+                      checked={documentacaoDetalhes?.[id]?.[sub] || false}
+                      onChange={() => toggleSubopcaoDocumentacao(id, sub)}
+                      size="small"
+                      sx={{
+                        color: "#2E7D32",
+                        '&.Mui-checked': {
+                          color: "#2E7D32",
+                        },
+                      }}
+                    />
+                  }
+                  label={<Typography sx={{ fontSize: "0.85rem" }}>{sub}</Typography>}
+                />
+              ))}
+            </FormGroup>
+          </Box>
+        )}
+      </Box>
+    ))}
+
+    <Box>
+      <Typography variant="body2" fontWeight="bold" gutterBottom>
+        Outros:
+      </Typography>
+      <TextField
+        fullWidth
+        value={documentacaoDetalhes.outros || ""}
+        onChange={(e) =>
+          setDocumentacaoDetalhes((prev) => ({ ...prev, outros: e.target.value }))
+        }
+        placeholder="Descreva aqui"
+        size="small"
+        sx={{
+          mt: 1,
+          "& .MuiOutlinedInput-root": {
+            borderRadius: 2,
+            fontSize: "0.85rem",
+          },
+          "& input": {
+            padding: "8px 10px",
+          },
+        }}
+      />
+    </Box>
+  </Box>
+)}
+
+
+
+{tipoAtendimento.includes("saude") && (
+  <Box sx={{ mt: 4 }}>
+    <Typography
+      variant="subtitle1"
+      fontWeight="bold"
+      gutterBottom
+      sx={{ fontSize: "1rem" }}
+    >
+      🏥 3.4 Atenção à Saúde
+    </Typography>
+
+    <FormGroup sx={{ gap: 1 }}>
+      {["ubs", "hospital", "dsei_y", "caps"].map((id) => (
+        <FormControlLabel
+          key={id}
+          control={
+            <Checkbox
+              checked={saudeSelecionada.includes(id)}
+              onChange={() => toggleSaude(id)}
+              sx={{
+                color: "#2E7D32",
+                '&.Mui-checked': {
+                  color: "#2E7D32",
+                },
+              }}
+            />
+          }
+          label={
+            <Typography sx={{ fontSize: "0.85rem" }}>
+              {{
+                ubs: "Unidade Básica de Saúde (UBS)",
+                hospital: "Hospital",
+                dsei_y: "Distrito Sanitário Especial Indígena Yanomami (DSEI-Y)",
+                caps: "Centro de Atenção Psicossocial (CAPS)",
+              }[id]}
+            </Typography>
+          }
+        />
+      ))}
+    </FormGroup>
+
+    <Box sx={{ mt: 2 }}>
+      <Typography variant="body2" fontWeight="bold" gutterBottom>
+        Outros:
+      </Typography>
+      <TextField
+        fullWidth
+        size="small"
+        value={saudeDetalhes.outros || ""}
+        onChange={(e) =>
+          setSaudeDetalhes((prev) => ({ ...prev, outros: e.target.value }))
+        }
+        placeholder="Descreva aqui"
+        sx={{
+          "& .MuiOutlinedInput-root": {
+            borderRadius: 2,
+            fontSize: "0.85rem",
+          },
+        }}
+      />
+    </Box>
+  </Box>
+)}
+
+{tipoAtendimento.includes("alimentos") && (
+  <Box sx={{ mt: 4 }}>
+    <Typography
+      variant="subtitle1"
+      fontWeight="bold"
+      gutterBottom
+      sx={{ fontSize: "1rem" }}
+    >
+      🍽️ 3.5 Segurança Alimentar
+    </Typography>
+
+    <FormGroup sx={{ gap: 1 }}>
+      {["cesta", "refeicao", "restaurante", "encaminhamento"].map((id) => (
+        <FormControlLabel
+          key={id}
+          control={
+            <Checkbox
+              checked={segAlimentarSelecionada.includes(id)}
+              onChange={() => toggleSegAlimentar(id)}
+              sx={{
+                color: "#2E7D32",
+                '&.Mui-checked': {
+                  color: "#2E7D32",
+                },
+              }}
+            />
+          }
+          label={
+            <Typography sx={{ fontSize: "0.85rem" }}>
+              {{
+                cesta: "Distribuição de Cesta de Alimentos",
+                refeicao: "Oferta de Refeição Pronta",
+                restaurante: "Encaminhamento a Restaurante Popular",
+                encaminhamento: "Encaminhamento para Assistência Alimentar",
+              }[id]}
+            </Typography>
+          }
+        />
+      ))}
+    </FormGroup>
+
+    {(segAlimentarSelecionada.includes("cesta") ||
+      segAlimentarSelecionada.includes("refeicao")) && (
+      <Grid container spacing={2} sx={{ mt: 2 }}>
+        {segAlimentarSelecionada.includes("cesta") && (
+          <Grid item xs={12} sm={6}>
+            <TextField
+              label="Quantidade de Cestas"
+              type="number"
+              inputProps={{ min: 0 }}
+              value={segAlimentarDetalhes.cesta}
+              onChange={(e) =>
+                setSegAlimentarDetalhes((prev) => ({
+                  ...prev,
+                  cesta: parseInt(e.target.value),
+                }))
+              }
+              fullWidth
+              size="small"
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: 2,
+                  fontSize: "0.85rem",
+                },
+              }}
+            />
+          </Grid>
+        )}
+        {segAlimentarSelecionada.includes("refeicao") && (
+          <Grid item xs={12} sm={6}>
+            <TextField
+              label="Quantidade de Refeições"
+              type="number"
+              inputProps={{ min: 0 }}
+              value={segAlimentarDetalhes.refeicao}
+              onChange={(e) =>
+                setSegAlimentarDetalhes((prev) => ({
+                  ...prev,
+                  refeicao: parseInt(e.target.value),
+                }))
+              }
+              fullWidth
+              size="small"
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: 2,
+                  fontSize: "0.85rem",
+                },
+              }}
+            />
+          </Grid>
+        )}
+      </Grid>
+    )}
+
+    <Box sx={{ mt: 2 }}>
+      <Typography variant="body2" fontWeight="bold" gutterBottom>
+        Outros:
+      </Typography>
+      <TextField
+        fullWidth
+        size="small"
+        value={segAlimentarDetalhes.outros || ""}
+        onChange={(e) =>
+          setSegAlimentarDetalhes((prev) => ({
+            ...prev,
+            outros: e.target.value,
+          }))
+        }
+        placeholder="Descreva aqui"
+        sx={{
+          "& .MuiOutlinedInput-root": {
+            borderRadius: 2,
+            fontSize: "0.85rem",
+          },
+        }}
+      />
+    </Box>
+  </Box>
+)}
+
+{tipoAtendimento.includes("outros") && (
+  <Box>
+    <Typography
+      variant="subtitle1"
+      fontWeight="bold"
+      sx={{ fontSize: "1rem", mb: 2, mt: 4 }}
+    >
+      🧰 3.6 Outros Atendimentos
+    </Typography>
+
+    <FormGroup sx={{ flexDirection: "column", gap: 1 }}>
+      <FormControlLabel
+        control={
+          <Checkbox
+            checked={outrosDetalhes.insumos}
+            onChange={() => toggleOutros("insumos")}
+            sx={{ color: "#2E7D32", '&.Mui-checked': { color: "#2E7D32" } }}
+            size="small"
+          />
+        }
+        label={<Typography sx={{ fontSize: "0.85rem" }}>Entrega de Insumos</Typography>}
+      />
+      {outrosDetalhes.insumos && (
+        <Box ml={4}>
+          <FormGroup sx={{ flexDirection: "column", gap: 1 }}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={outrosDetalhes.rede_dormir}
+                  onChange={() => toggleOutros("rede_dormir")}
+                  sx={{ color: "#2E7D32", '&.Mui-checked': { color: "#2E7D32" } }}
+                  size="small"
+                />
+              }
+              label={<Typography sx={{ fontSize: "0.85rem" }}>Rede de Dormir</Typography>}
+            />
+            {outrosDetalhes.rede_dormir && (
+              <TextField
+                fullWidth
+                type="number"
+                size="small"
+                label="Quantidade de Redes"
+                value={outrosDetalhes.rede_dormir_qtd || ""}
+                onChange={(e) => setOutrosDetalhes((prev) => ({ ...prev, rede_dormir_qtd: parseInt(e.target.value) }))}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, fontSize: "0.85rem" } }}
+              />
+            )}
+
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={outrosDetalhes.outros}
+                  onChange={() => toggleOutros("outros")}
+                  sx={{ color: "#2E7D32", '&.Mui-checked': { color: "#2E7D32" } }}
+                  size="small"
+                />
+              }
+              label={<Typography sx={{ fontSize: "0.85rem" }}>Outros Itens</Typography>}
+            />
+            {outrosDetalhes.outros && (
+              <Box>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="Descrição"
+                  value={outrosDetalhes.outros_desc || ""}
+                  onChange={(e) => setOutrosDetalhes((prev) => ({ ...prev, outros_desc: e.target.value }))}
+                  sx={{ mt: 1, '& .MuiOutlinedInput-root': { borderRadius: 2, fontSize: "0.85rem" } }}
+                />
+                <TextField
+                  fullWidth
+                  type="number"
+                  size="small"
+                  label="Quantidade"
+                  value={outrosDetalhes.outros_qtd || ""}
+                  onChange={(e) => setOutrosDetalhes((prev) => ({ ...prev, outros_qtd: parseInt(e.target.value) }))}
+                  sx={{ mt: 2, '& .MuiOutlinedInput-root': { borderRadius: 2, fontSize: "0.85rem" } }}
+                />
+              </Box>
+            )}
+          </FormGroup>
+        </Box>
+      )}
+
+      <FormControlLabel
+        control={
+          <Checkbox
+            checked={outrosDetalhes.acompanhamento}
+            onChange={() => toggleOutros("acompanhamento")}
+            sx={{ color: "#2E7D32", '&.Mui-checked': { color: "#2E7D32" } }}
+            size="small"
+          />
+        }
+        label={<Typography sx={{ fontSize: "0.85rem" }}>Acompanhamento</Typography>}
+      />
+      {outrosDetalhes.acompanhamento && (
+        <Box ml={4}>
+          <FormGroup sx={{ flexDirection: "column", gap: 1 }}>
+            {["banco", "comercio", "delegacia"].map((key) => (
+              <FormControlLabel
+                key={key}
+                control={
+                  <Checkbox
+                    checked={outrosDetalhes[key] || false}
+                    onChange={() => toggleOutros(key)}
+                    sx={{ color: "#2E7D32", '&.Mui-checked': { color: "#2E7D32" } }}
+                    size="small"
+                  />
+                }
+                label={<Typography sx={{ fontSize: "0.85rem" }}>{{
+                  banco: "Banco / Agência",
+                  comercio: "Comércio Local",
+                  delegacia: "Delegacia",
+                }[key]}</Typography>}
+              />
+            ))}
+          </FormGroup>
+        </Box>
+      )}
+
+      <FormControlLabel
+        control={
+          <Checkbox
+            checked={outrosDetalhes.artesanato}
+            onChange={() => toggleOutros("artesanato")}
+            sx={{ color: "#2E7D32", '&.Mui-checked': { color: "#2E7D32" } }}
+            size="small"
+          />
+        }
+        label={<Typography sx={{ fontSize: "0.85rem" }}>Atividade com Artesanato</Typography>}
+      />
+
+      <FormControlLabel
+        control={
+          <Checkbox
+            checked={outrosDetalhes.apoio_logistico}
+            onChange={() => toggleOutros("apoio_logistico")}
+            sx={{ color: "#2E7D32", '&.Mui-checked': { color: "#2E7D32" } }}
+            size="small"
+          />
+        }
+        label={<Typography sx={{ fontSize: "0.85rem" }}>Apoio Logístico</Typography>}
+      />
+      {outrosDetalhes.apoio_logistico && (
+        <Box ml={4}>
+          <FormGroup sx={{ flexDirection: "column", gap: 1 }}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={outrosDetalhes.combustivel || false}
+                  onChange={() => toggleOutros("combustivel")}
+                  sx={{ color: "#2E7D32", '&.Mui-checked': { color: "#2E7D32" } }}
+                  size="small"
+                />
+              }
+              label={<Typography sx={{ fontSize: "0.85rem" }}>Combustível</Typography>}
+            />
+            {outrosDetalhes.combustivel && (
+              <TextField
+                fullWidth
+                type="number"
+                size="small"
+                label="Quantidade de litros"
+                value={outrosDetalhes.combustivel_qtd || ""}
+                onChange={(e) => setOutrosDetalhes((prev) => ({ ...prev, combustivel_qtd: parseInt(e.target.value) }))}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, fontSize: "0.85rem" } }}
+              />
+            )}
+
+            {["deslocamento_aereo", "deslocamento_terrestre", "deslocamento_fluvial"].map((key) => (
+              <FormControlLabel
+                key={key}
+                control={
+                  <Checkbox
+                    checked={outrosDetalhes[key] || false}
+                    onChange={() => toggleOutros(key)}
+                    sx={{ color: "#2E7D32", '&.Mui-checked': { color: "#2E7D32" } }}
+                    size="small"
+                  />
+                }
+                label={<Typography sx={{ fontSize: "0.85rem" }}>{{
+                  deslocamento_aereo: "Deslocamento Aéreo",
+                  deslocamento_terrestre: "Deslocamento Terrestre",
+                  deslocamento_fluvial: "Deslocamento Fluvial",
+                }[key]}</Typography>}
+              />
+            ))}
+          </FormGroup>
+        </Box>
+      )}
+    </FormGroup>
+  </Box>
+)}
+</Box>
+
+ <Box
+  sx={{
+    backgroundColor: "#ffffff",
+    borderRadius: 2,
+    border: "1px solid #E0E0E0",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+    p: 3,
+    mt: 4,
+  }}
+>
+  <Typography
+    variant="subtitle1"
+    fontWeight="bold"
+    gutterBottom
+    sx={{ fontSize: "1rem", mb: 2 }}
+  >
+    📑 Observações
+  </Typography>
+
+  <TextField
+    multiline
+    fullWidth
+    rows={4}
+    placeholder="Escreva aqui observações adicionais..."
+    value={observacoes}
+    onChange={(e) => setObservacoes(e.target.value)}
+    variant="outlined"
+    size="small"
+    sx={{
+      "& .MuiOutlinedInput-root": {
+        borderRadius: 2,
+        fontSize: "0.85rem",
+      },
+      "& textarea": {
+        padding: "10px",
+      },
+    }}
+  />
+</Box>
+
+
+<Box display="flex" justifyContent="flex-end" alignItems="center" gap={2} mt={4}>
+  {/* Botão Limpar Formulário */}
+  <Button
+    onClick={handleClear}
+    variant="outlined"
+    sx={{
+      px: 3,
+      py: 1,
+      fontWeight: 600,
+      borderRadius: 2,
+      textTransform: "none",
+    }}
+  >
+    Limpar Formulário
+  </Button>
+
+  {/* Botão Salvar Atendimento */}
+  <Button
+    onClick={handleSubmit}
+    disabled={isSubmitting}
+    variant="contained"
+    sx={{
+      px: 3,
+      py: 1,
+      fontWeight: 600,
+      borderRadius: 2,
+      backgroundColor: isSubmitting ? "#9e9e9e" : "#1a73e8",
+      color: "#fff",
+      textTransform: "none",
+      "&:hover": {
+        backgroundColor: isSubmitting ? "#9e9e9e" : "#1666c1",
+      },
+    }}
+  >
+    {isSubmitting ? "Enviando..." : "Salvar Atendimento"}
+  </Button>
+
+  {/* Botão Sair (opcional e discreto) */}
+  <Button
+    onClick={handleLogout}
+    variant="text"
+    sx={{
+      color: "#d32f2f",
+      fontSize: "0.875rem",
+      textDecoration: "underline",
+      textTransform: "none",
+      "&:hover": {
+        color: "#9a0007",
+      },
+    }}
+  >
+    Sair
+  </Button>
+</Box>
+
+
     </div>
   );
 }
