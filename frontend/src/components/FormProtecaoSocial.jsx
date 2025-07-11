@@ -2222,19 +2222,27 @@ async function fetchComunidades(forcar = false) {
 
 <Box display="flex" justifyContent="flex-end" alignItems="center" gap={2} mt={4}>
   {/* Botão Limpar Formulário */}
-  <Button
-    onClick={handleClear}
-    variant="outlined"
-    sx={{
-      px: 3,
-      py: 1,
-      fontWeight: 600,
-      borderRadius: 2,
-      textTransform: "none",
-    }}
-  >
-    Limpar Formulário
-  </Button>
+ <Button
+  onClick={handleClear}
+  variant="outlined"
+  sx={{
+    px: 3,
+    py: 1,
+    fontWeight: 600,
+    borderRadius: 2,
+    textTransform: "none",
+    color: "#2E7D32",         
+    borderColor: "#2E7D32",  
+    "&:hover": {
+      backgroundColor: "#E8F5E9", 
+      borderColor: "#1B5E20",     
+      color: "#1B5E20",          
+    },
+  }}
+>
+  Limpar Formulário
+</Button>
+
 
   {/* Botão Salvar Atendimento */}
   <Button
@@ -2246,7 +2254,7 @@ async function fetchComunidades(forcar = false) {
       py: 1,
       fontWeight: 600,
       borderRadius: 2,
-      backgroundColor: isSubmitting ? "#9e9e9e" : "#1a73e8",
+      backgroundColor: isSubmitting ? "#9e9e9e" : "#2E7D32",
       color: "#fff",
       textTransform: "none",
       "&:hover": {
@@ -2257,7 +2265,6 @@ async function fetchComunidades(forcar = false) {
     {isSubmitting ? "Enviando..." : "Salvar Atendimento"}
   </Button>
 
-  {/* Botão Sair (opcional e discreto) */}
   <Button
     onClick={handleLogout}
     variant="text"
