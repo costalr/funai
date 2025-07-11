@@ -25,7 +25,11 @@ export default function FormularioProtecao() {
   const [adultos, setAdultos] = useState(0);
   const [criancas, setCriancas] = useState(0);
   const [idosos, setIdosos] = useState(0);
-  const [modalDeslocamento, setModalDeslocamento] = useState({ terrestre: [], fluvial: [], aereo: [] });
+  const [modalDeslocamento, setModalDeslocamento] = useState({
+  terrestre: [],
+  fluvial: [],
+  aereo: [],
+});
   const [orgaos, setOrgaos] = useState({ viatura: "", embarcacao: "", freteOficial: "" });
   const [opcaoOrgao, setOpcaoOrgao] = useState({ viatura: "", embarcacao: "", freteOficial: "" });
   const orgaosDisponiveis = ["DSEI-Y", "FUNAI", "Exército"];
@@ -472,6 +476,19 @@ const toggleSubopcao = (blocoId, subopcaoKey) => {
 };
   const [municipio, setMunicipio] = useState("");
 
+const toggleOption = (categoria, opcao) => {
+  setModalDeslocamento((prev) => {
+    const jaExiste = prev[categoria].includes(opcao);
+    const atualizados = jaExiste
+      ? prev[categoria].filter((item) => item !== opcao)
+      : [...prev[categoria], opcao];
+
+    return {
+      ...prev,
+      [categoria]: atualizados,
+    };
+  });
+};
 
 useEffect(() => {
   const usuario = JSON.parse(localStorage.getItem("usuario"));
