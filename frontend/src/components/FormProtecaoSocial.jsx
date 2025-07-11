@@ -765,23 +765,30 @@ async function fetchComunidades(forcar = false) {
       />
     </Grid>
 
-    <Grid item xs={12} sm={4} sx={{ display: "flex", alignItems: "center" }}>
-      <FormControlLabel
-        control={
-          <Checkbox
-            size="small"
-            checked={precisaInterprete}
-            onChange={(e) => setPrecisaInterprete(e.target.checked)}
-          />
-        }
-        label={
-          <Typography variant="caption" sx={{ fontSize: "0.9rem" }}>
-            Necessita de intérprete
-          </Typography>
-        }
-        sx={{ mt: 3 }}
+   <Grid item xs={12} sm={4} sx={{ display: "flex", alignItems: "center" }}>
+  <FormControlLabel
+    control={
+      <Checkbox
+        size="small"
+        checked={precisaInterprete}
+        onChange={(e) => setPrecisaInterprete(e.target.checked)}
+        sx={{
+          color: "#2E7D32",
+          '&.Mui-checked': {
+            color: "#2E7D32",
+          },
+        }}
       />
-    </Grid>
+    }
+    label={
+      <Typography variant="caption" sx={{ fontSize: "0.9rem" }}>
+        Necessita de intérprete
+      </Typography>
+    }
+    sx={{ mt: 3 }}
+  />
+</Grid>
+
   </Grid>
 </Box>
 
