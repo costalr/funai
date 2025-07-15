@@ -39,6 +39,12 @@ export default function FormularioProtecao() {
   const [setCarregandoComunidades] = useState(false);
   const [precisaInterprete, setPrecisaInterprete] = useState(false);
   const [assistenciaDetalhes, setAssistenciaDetalhes] = useState({ baixa: {}, bpc: {}, alta: {}, outros: "" });
+  const normalizeMunicipio = (nome) =>
+  nome.normalize("NFD") // remove acentos
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+
   const [previdenciaSelecionada, setPrevidenciaSelecionada] = useState([]);
   const handleLogout = () => {
   localStorage.removeItem("access_token");
@@ -56,7 +62,7 @@ export default function FormularioProtecao() {
   const [documentacaoSelecionada, setDocumentacaoSelecionada] = useState([]);
   const [documentacaoDetalhes, setDocumentacaoDetalhes] = useState({});
   const [saudeSelecionada, setSaudeSelecionada] = useState([]);
-  const [localUnidade] = useState("");
+  const [localUnidade, setLocalUnidade] = useState("");
   const [saudeDetalhes, setSaudeDetalhes] = useState({ outros: "" });
   const [segAlimentarSelecionada, setSegAlimentarSelecionada] = useState([]);
   const [segAlimentarDetalhes, setSegAlimentarDetalhes] = useState({ refeicao: 0, cesta: 0, outros: "" });
@@ -70,6 +76,8 @@ export default function FormularioProtecao() {
     setOpcaoOrgao((prev) => ({ ...prev, [tipo]: valor }));
     setOrgaos((prev) => ({ ...prev, [tipo]: valor }));
   };
+
+  
   const [outrosDetalhes, setOutrosDetalhes] = useState({
     insumos: false,
     rede_dormir: false,
@@ -746,6 +754,37 @@ async function fetchComunidades(forcar = false) {
         }}
       />
     </Grid>
+
+    {["boa vista", "sao gabriel da cachoeira", "santa isabel do rio negro", "barcelos"].includes(normalizeMunicipio(municipio)) && (
+  <Grid item xs={12} sm={4}>
+    <Typography
+      variant="caption"
+      fontWeight="medium"
+      color="text.secondary"
+      sx={{ mb: 0.5 }}
+    >
+      Interno ou Externo?
+    </Typography>
+    <TextField
+      select
+      fullWidth
+      size="small"
+      value={localUnidade}
+      onChange={(e) => setLocalUnidade(e.target.value)}
+      sx={{
+        "& .MuiOutlinedInput-root": {
+          borderRadius: 2,
+          fontSize: "0.85rem",
+        },
+      }}
+    >
+      <MenuItem value="">Selecione</MenuItem>
+      <MenuItem value="sede">Sede</MenuItem>
+      <MenuItem value="desconcentrada">Unidade Desconcentrada</MenuItem>
+    </TextField>
+  </Grid>
+)}
+
 
     <Grid item xs={12} sm={4}>
       <Typography
