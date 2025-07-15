@@ -21,7 +21,27 @@ export default function FormularioProtecao() {
   const [nome, setNome] = useState("");
   const [comunidades, setComunidades] = useState([]);
   const [comunidadeSelecionada, setComunidadeSelecionada] = useState(null);
-  const [comunidadeManual] = useState("");
+  const [comunidadeManual, setComunidadeManual] = useState("");
+  const [poloBaseManual, setPoloBaseManual] = useState("");
+  const [polosBase, setPolosBase] = useState([]);
+    useEffect(() => {
+      const fetchPolosBase = async () => {
+        const { data, error } = await supabaseCestas
+          .from("subpolo")
+          .select("id_subpolo, nome_subpolo")
+          .order("nome_subpolo", { ascending: true });
+
+        if (!error) {
+          setPolosBase(data);
+        } else {
+          console.error("Erro ao buscar polos base:", error);
+        }
+      };
+
+      fetchPolosBase();
+    }, []);
+
+
   const [adultos, setAdultos] = useState(0);
   const [criancas, setCriancas] = useState(0);
   const [idosos, setIdosos] = useState(0);
@@ -31,12 +51,15 @@ export default function FormularioProtecao() {
   aereo: [],
 });
   const [orgaos, setOrgaos] = useState({ viatura: "", embarcacao: "", freteOficial: "" });
-  const [opcaoOrgao, setOpcaoOrgao] = useState({ viatura: "", embarcacao: "", freteOficial: "" });
+  const [opcaoOrgao, setOpcaoOrgao] = useState({
+      viatura: "",
+      embarcacao: "",
+      aereo: "", 
+    });
   const orgaosDisponiveis = ["DSEI-Y", "FUNAI", "Exército"];
   const [tempoDeslocamento, setTempoDeslocamento] = useState("");
   const [tipoAtendimento, setTipoAtendimento] = useState([]);
   const [assistenciaSelecionada, setAssistenciaSelecionada] = useState([]);
-  const [setCarregandoComunidades] = useState(false);
   const [precisaInterprete, setPrecisaInterprete] = useState(false);
   const [assistenciaDetalhes, setAssistenciaDetalhes] = useState({ baixa: {}, bpc: {}, alta: {}, outros: "" });
   const normalizeMunicipio = (nome) =>
@@ -66,6 +89,7 @@ export default function FormularioProtecao() {
   const [saudeDetalhes, setSaudeDetalhes] = useState({ outros: "" });
   const [segAlimentarSelecionada, setSegAlimentarSelecionada] = useState([]);
   const [segAlimentarDetalhes, setSegAlimentarDetalhes] = useState({ refeicao: 0, cesta: 0, outros: "" });
+  const [previdenciaOutrosTexto, setPrevidenciaOutrosTexto] = useState("");
   const [dataAtendimento, setDataAtendimento] = useState("");
   const [outrosModais, setOutrosModais] = useState({
   terrestre: "",
@@ -128,7 +152,7 @@ export default function FormularioProtecao() {
     novosErros.push("Preencha o órgão responsável pela Embarcação Oficial.");
   }
 
-  if (modalDeslocamento.aereo.includes("Frete aéreo Oficial") && !orgaos.freteOficial.trim()) {
+  if (modalDeslocamento.aereo.includes("Frete aéreo Oficial") && !orgaos.aereo.trim()) {
     novosErros.push("Preencha o órgão responsável pelo Frete aéreo Oficial.");
   }
 
@@ -158,8 +182,15 @@ export default function FormularioProtecao() {
         nome_servidor: servidor,
         data_hora: dataHora,
         nome_atendido: nome,
-        comunidade: comunidadeSelecionada?.label || comunidadeManual,
-        subpolo: comunidadeSelecionada?.subpolo?.nome_subpolo || null,
+        comunidade:
+        comunidadeSelecionada?.value === "outros"
+          ? comunidadeManual
+          : comunidadeSelecionada?.label || "",
+
+      polo_base: // agora representa o Polo Base
+        comunidadeSelecionada?.value === "outros"
+          ? poloBaseManual
+          : comunidadeSelecionada?.subpolo?.nome_subpolo || null,
         polo: comunidadeSelecionada?.subpolo?.polo?.nome_polo || null,
         municipio,
         tipo_unidade: localUnidade,
@@ -579,11 +610,7 @@ async function fetchComunidades(forcar = false) {
     const nome = c.nome_comunidade;
     const subpolo = c.comunidade_id_subpolo_fkey?.nome_subpolo || "";
     const polo = c.comunidade_id_subpolo_fkey?.polo?.nome_polo || "";
-
-    const chave = chaveComunidade(c);
-    const chaveDuplicada = contadorChaves[chave] > 1;
     const nomeAmbiguo = contadorPorNome[nome] > 1;
-
     const label = nomeAmbiguo
       ? `${nome} — ${subpolo} / ${polo}`
       : nome;
@@ -889,108 +916,69 @@ async function fetchComunidades(forcar = false) {
       />
     </Grid>
 
- 
-    {/* Comunidade */}
-    <Grid item xs={12}>
-      <Typography variant="caption" fontWeight="medium" color="text.secondary" sx={{ mb: 0.5 }}>
-        Comunidade
-      </Typography>
-<Autocomplete
-  options={comunidades}
-  getOptionLabel={(option) => option.label}
-  isOptionEqualToValue={(option, value) => option.value === value.value}
-  value={comunidadeSelecionada}
-  onChange={(event, newValue) => setComunidadeSelecionada(newValue)}
-  renderOption={(props, option) => (
-    <li {...props} key={option.value}>
-      {option.label}
-    </li>
-  )}
-  renderInput={(params) => (
-    <TextField
-      {...params}
-      placeholder="Nome da comunidade"
-      variant="outlined"
-      size="small"
-    />
-  )}
-/>
+{/* Comunidade */}
+<Grid item xs={12}>
+  <Typography
+    variant="caption"
+    fontWeight="medium"
+    color="text.secondary"
+    sx={{ mb: 0.5 }}
+  >
+    Comunidade
+  </Typography>
 
-
-
-      {comunidadeSelecionada && (
-        <Box mt={2}>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
-              <Typography variant="caption" fontWeight="medium" color="text.secondary" sx={{ mb: 0.5 }}>
-                Subpolo
-              </Typography>
-              <TextField
-                value={comunidadeSelecionada.subpolo?.nome_subpolo || "—"}
-                fullWidth
-                size="small"
-                disabled
-                InputProps={{ readOnly: true }}
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: 2,
-                    fontSize: "0.85rem",
-                  },
-                  "& input": {
-                    padding: "8px 10px",
-                  },
-                }}
-              />
-            </Grid>
-
-            <Grid item xs={12} sm={6}>
-              <Typography variant="caption" fontWeight="medium" color="text.secondary" sx={{ mb: 0.5 }}>
-                Polo
-              </Typography>
-              <TextField
-                value={comunidadeSelecionada.subpolo?.polo?.nome_polo || "—"}
-                fullWidth
-                size="small"
-                disabled
-                InputProps={{ readOnly: true }}
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: 2,
-                    fontSize: "0.85rem",
-                  },
-                  "& input": {
-                    padding: "8px 10px",
-                  },
-                }}
-              />
-            </Grid>
-          </Grid>
-        </Box>
-      )}
-
-      <Button
-        onClick={() => fetchComunidades(true)}
-        size="small"
+  <Autocomplete
+   sx={{ width: "100%", minWidth: 250 }} 
+    options={[...comunidades, { value: "outros", label: "Outros" }]}
+    getOptionLabel={(option) => option.label}
+    isOptionEqualToValue={(option, value) => option.value === value.value}
+    value={comunidadeSelecionada}
+    onChange={(event, newValue) => {
+      setComunidadeSelecionada(newValue);
+      if (newValue?.value !== "outros") {
+        setComunidadeManual("");
+        setPoloBaseManual("");
+      }
+    }}
+    renderOption={(props, option) => (
+      <li {...props} key={option.value}>
+        {option.label}
+      </li>
+    )}
+    renderInput={(params) => (
+      <TextField
+         {...params}
+          label=""
+          size="small"
+          placeholder="Nome da comunidade"
+          sx={{
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 2,
+              fontSize: "0.85rem",
+            },
+          }}
         variant="outlined"
-        sx={{ mt: 1 }}
-      >
-        🔄 Recarregar
-      </Button>
-    </Grid>
+      />
+    )}
+  />
 
-    {/* Número de acompanhantes */}
-    <Grid item xs={12}>
-      <Typography variant="caption" fontWeight="medium" color="text.secondary" sx={{ mb: 0.5 }}>
-        Número de Acompanhantes
-      </Typography>
+  {/* Campos manuais se "Outros" for selecionado */}
+  {comunidadeSelecionada?.value === "outros" && (
+    <Box mt={2}>
       <Grid container spacing={2}>
-        <Grid item xs={12} sm={4}>
+        <Grid item xs={12} sm={6}>
+          <Typography
+            variant="caption"
+            fontWeight="medium"
+            color="text.secondary"
+            sx={{ mb: 0.5 }}
+          >
+            Nome da Comunidade (manual)
+          </Typography>
           <TextField
-            label="Adultos"
-            type="number"
-            inputProps={{ min: 0 }}
-            value={adultos}
-            onChange={(e) => setAdultos(parseInt(e.target.value))}
+            value={comunidadeManual}
+            onChange={(e) => setComunidadeManual(e.target.value)}
+            placeholder="Digite o nome da comunidade"
             fullWidth
             size="small"
             sx={{
@@ -998,45 +986,173 @@ async function fetchComunidades(forcar = false) {
                 borderRadius: 2,
                 fontSize: "0.85rem",
               },
+              "& input": {
+                padding: "8px 10px",
+              },
             }}
           />
         </Grid>
-        <Grid item xs={12} sm={4}>
+
+          
+          <Grid item xs={12} sm={6}>
+      <Typography
+        variant="caption"
+        fontWeight="medium"
+        color="text.secondary"
+        sx={{ mb: 0.5 }}
+      >
+        Polo Base
+      </Typography>
+        <Autocomplete
+         sx={{ width: "100%", minWidth: 250 }} 
+      options={polosBase}
+      getOptionLabel={(option) => option.nome_subpolo}
+      isOptionEqualToValue={(option, value) => option.nome_subpolo === value}
+      value={
+        polosBase.find((p) => p.nome_subpolo === poloBaseManual) || null
+      }
+      onChange={(event, newValue) => {
+        setPoloBaseManual(newValue ? newValue.nome_subpolo : "");
+      }}
+      renderInput={(params) => (
+        <TextField
+          {...params}
+          label=""
+          size="small"
+          placeholder="Selecione o polo base"
+          sx={{
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 2,
+              fontSize: "0.85rem",
+            },
+          }}
+        />
+      )}
+      ListboxProps={{
+        style: {
+          maxHeight: 200, 
+        },
+      }}
+    />
+
+    </Grid>
+      </Grid>
+    </Box>
+  )}
+
+  {/* Campo automático se comunidade foi selecionada do banco */}
+  {comunidadeSelecionada?.value !== "outros" && comunidadeSelecionada?.subpolo && (
+    <Box mt={2}>
+      <Grid container spacing={2}>
+        <Grid item xs={12} sm={6}>
+          <Typography
+            variant="caption"
+            fontWeight="medium"
+            color="text.secondary"
+            sx={{ mb: 0.5 }}
+          >
+            Polo Base
+          </Typography>
           <TextField
-            label="Crianças"
-            type="number"
-            inputProps={{ min: 0 }}
-            value={criancas}
-            onChange={(e) => setCriancas(parseInt(e.target.value))}
+            value={comunidadeSelecionada.subpolo?.nome_subpolo || "—"}
             fullWidth
             size="small"
+            disabled
+            InputProps={{ readOnly: true }}
             sx={{
               "& .MuiOutlinedInput-root": {
                 borderRadius: 2,
                 fontSize: "0.85rem",
               },
-            }}
-          />
-        </Grid>
-        <Grid item xs={12} sm={4}>
-          <TextField
-            label="Idosos"
-            type="number"
-            inputProps={{ min: 0 }}
-            value={idosos}
-            onChange={(e) => setIdosos(parseInt(e.target.value))}
-            fullWidth
-            size="small"
-            sx={{
-              "& .MuiOutlinedInput-root": {
-                borderRadius: 2,
-                fontSize: "0.85rem",
+              "& input": {
+                padding: "8px 10px",
               },
             }}
           />
         </Grid>
       </Grid>
+    </Box>
+  )}
+
+  <Button
+    onClick={() => fetchComunidades(true)}
+    size="small"
+    variant="outlined"
+    sx={{ mt: 1 }}
+  >
+    🔄 Recarregar
+  </Button>
+</Grid>
+
+
+
+    {/* Número de acompanhantes */}
+<Grid item xs={12}>
+  <Typography
+    variant="caption"
+    fontWeight="medium"
+    color="text.secondary"
+    sx={{ mb: 2}} 
+  >
+  </Typography>
+
+  <Grid container spacing={2} sx={{ mt: 3 }}> 
+    <Grid item xs={12} sm={4}>
+      <TextField
+        label="Adultos"
+        type="number"
+        inputProps={{ min: 0 }}
+        value={adultos}
+        onChange={(e) => setAdultos(parseInt(e.target.value))}
+        fullWidth
+        size="small"
+        sx={{
+          "& .MuiOutlinedInput-root": {
+            borderRadius: 2,
+            fontSize: "0.85rem",
+          },
+        }}
+      />
     </Grid>
+
+    <Grid item xs={12} sm={4}>
+      <TextField
+        label="Crianças"
+        type="number"
+        inputProps={{ min: 0 }}
+        value={criancas}
+        onChange={(e) => setCriancas(parseInt(e.target.value))}
+        fullWidth
+        size="small"
+        sx={{
+          "& .MuiOutlinedInput-root": {
+            borderRadius: 2,
+            fontSize: "0.85rem",
+          },
+        }}
+      />
+    </Grid>
+
+    <Grid item xs={12} sm={4}>
+      <TextField
+        label="Idosos"
+        type="number"
+        inputProps={{ min: 0 }}
+        value={idosos}
+        onChange={(e) => setIdosos(parseInt(e.target.value))}
+        fullWidth
+        size="small"
+        sx={{
+          "& .MuiOutlinedInput-root": {
+            borderRadius: 2,
+            fontSize: "0.85rem",
+          },
+        }}
+      />
+    </Grid>
+  </Grid>
+</Grid>
+
   </Grid>
 </Box>
 
@@ -1056,13 +1172,14 @@ async function fetchComunidades(forcar = false) {
     fontWeight="bold"
     gutterBottom
     sx={{
-      fontSize: "1rem",
+      fontSize: "1.0rem",
       display: "flex",
       alignItems: "center",
       gap: 1,
     }}
   >
-    🚗 Modal de Deslocamento
+    <Box fontSize="1.4rem">🚗</Box>
+     Modal de Deslocamento
   </Typography>
 
   <Typography
@@ -1102,63 +1219,53 @@ async function fetchComunidades(forcar = false) {
       ))}
     </FormGroup>
 
-    {modalDeslocamento.terrestre.includes("Viatura Oficial") && (
-      <Box ml={4} mt={2}>
-        <Typography variant="body2" fontWeight="medium" sx={{ mb: 1 }}>
-          Órgão responsável:
-        </Typography>
+{modalDeslocamento.terrestre.includes("Viatura Oficial") && (
+  <Box mt={2} display="flex" gap={2} alignItems="center">
+    <Box fontSize="1.4rem">🏛️</Box>
 
-        <TextField
-          select
-          fullWidth
-          size="small"
-          value={opcaoOrgao.viatura}
-          onChange={(e) => {
-            const valor = e.target.value;
-            handleSelectOrgao("viatura", valor === "Outros" ? "" : valor);
-            setOpcaoOrgao((prev) => ({ ...prev, viatura: valor }));
-          }}
-          sx={{
-            "& .MuiOutlinedInput-root": {
-              borderRadius: 2,
-              fontSize: "0.85rem",
-            },
-          }}
-        >
-          <MenuItem value="">Selecione o órgão</MenuItem>
-          {[...orgaosDisponiveis, "Outros"].map((opcao) => (
-            <MenuItem key={opcao} value={opcao}>
-              {opcao}
-            </MenuItem>
-          ))}
-        </TextField>
+    <TextField
+      select
+      fullWidth
+      size="small"
+      value={opcaoOrgao.viatura}
+      onChange={(e) => {
+        const valor = e.target.value;
+        handleSelectOrgao("viatura", valor === "Outros" ? "" : valor);
+        setOpcaoOrgao((prev) => ({ ...prev, viatura: valor }));
+      }}
+      displayEmpty
+      sx={{
+        "& .MuiOutlinedInput-root": {
+          borderRadius: 2,
+          fontSize: "0.85rem",
+        },
+        "& .MuiSelect-select": {
+          padding: "8px 10px",
+        },
+      }}
+      inputProps={{
+        displayEmpty: true,
+      }}
+    >
+      <MenuItem value="">
+        <span style={{ fontSize: "0.85rem", color: "#B8B8B8" }}>
+          Selecione o órgão responsável
+        </span>
+      </MenuItem>
+      {[...orgaosDisponiveis, "Outros"].map((opcao) => (
+        <MenuItem key={opcao} value={opcao}>
+          {opcao}
+        </MenuItem>
+      ))}
+    </TextField>
+  </Box>
+)}
 
-        {opcaoOrgao.viatura === "Outros" && (
-          <TextField
-            fullWidth
-            size="small"
-            placeholder="Órgão"
-            value={orgaos.viatura}
-            onChange={(e) =>
-              setOrgaos((prev) => ({ ...prev, viatura: e.target.value }))
-            }
-            sx={{
-              mt: 2,
-              "& .MuiOutlinedInput-root": {
-                borderRadius: 2,
-                fontSize: "0.85rem",
-              },
-              "& input": {
-                padding: "8px 10px",
-              },
-            }}
-          />
-        )}
-      </Box>
-    )}
+
 
     {modalDeslocamento.terrestre.includes("Outros") && (
-      <Box ml={4} mt={2}>
+        <Box  mt={2} display="flex" gap={2}>
+        <Box fontSize="1.4rem">🚙</Box>
         <TextField
           fullWidth
           size="small"
@@ -1209,63 +1316,54 @@ async function fetchComunidades(forcar = false) {
       ))}
     </FormGroup>
 
-    {modalDeslocamento.fluvial.includes("Embarcação Oficial") && (
-      <Box ml={4} mt={2}>
-        <Typography variant="body2" fontWeight="medium" sx={{ mb: 1 }}>
-          Órgão responsável:
-        </Typography>
+  {modalDeslocamento.fluvial.includes("Embarcação Oficial") && (
+   <Box  mt={2} display="flex" gap={2}>
+        <Box fontSize="1.4rem">🏛️</Box>
 
-        <TextField
-          select
-          fullWidth
-          size="small"
-          value={opcaoOrgao.embarcacao}
-          onChange={(e) => {
-            const valor = e.target.value;
-            handleSelectOrgao("embarcacao", valor === "Outros" ? "" : valor);
-            setOpcaoOrgao((prev) => ({ ...prev, embarcacao: valor }));
-          }}
-          sx={{
-            "& .MuiOutlinedInput-root": {
-              borderRadius: 2,
-              fontSize: "0.85rem",
-            },
-          }}
+    <TextField
+      select
+      fullWidth
+      size="small"
+      value={opcaoOrgao.embarcacao}
+      onChange={(e) => {
+        const valor = e.target.value;
+        handleSelectOrgao("embarcacao", valor === "Outros" ? "" : valor);
+        setOpcaoOrgao((prev) => ({ ...prev, embarcacao: valor }));
+      }}
+      displayEmpty
+      sx={{
+        "& .MuiOutlinedInput-root": {
+          borderRadius: 2,
+          fontSize: "0.85rem",
+        },
+        "& .MuiSelect-select": {
+          padding: "8px 10px",
+        },
+      }}
+      inputProps={{
+        displayEmpty: true,
+      }}
+    >
+      <MenuItem value="" disabled>
+        <Typography
+          variant="caption"
+          color="#B8B8B8"
+          sx={{ fontSize: "0.85rem" }}
         >
-          <MenuItem value="">Selecione o órgão</MenuItem>
-          {[...orgaosDisponiveis, "Outros"].map((opcao) => (
-            <MenuItem key={opcao} value={opcao}>
-              {opcao}
-            </MenuItem>
-          ))}
-        </TextField>
-
-        {opcaoOrgao.embarcacao === "Outros" && (
-          <TextField
-            fullWidth
-            size="small"
-            placeholder="Órgão"
-            value={orgaos.embarcacao}
-            onChange={(e) =>
-              setOrgaos((prev) => ({ ...prev, embarcacao: e.target.value }))
-            }
-            sx={{
-              mt: 2,
-              "& .MuiOutlinedInput-root": {
-                borderRadius: 2,
-                fontSize: "0.85rem",
-              },
-              "& input": {
-                padding: "8px 10px",
-              },
-            }}
-          />
-        )}
-      </Box>
-    )}
-
+          Selecione o órgão responsável
+        </Typography>
+      </MenuItem>
+      {[...orgaosDisponiveis, "Outros"].map((opcao) => (
+        <MenuItem key={opcao} value={opcao}>
+          {opcao}
+        </MenuItem>
+      ))}
+    </TextField>
+  </Box>
+)}
     {modalDeslocamento.fluvial.includes("Outros") && (
-      <Box ml={4} mt={2}>
+       <Box  mt={2} display="flex" gap={2}>
+        <Box fontSize="1.4rem">🚤</Box>
         <TextField
           fullWidth
           size="small"
@@ -1316,63 +1414,58 @@ async function fetchComunidades(forcar = false) {
       ))}
     </FormGroup>
 
-    {modalDeslocamento.aereo.includes("Frete aéreo Oficial") && (
-      <Box ml={4} mt={2}>
-        <Typography variant="body2" fontWeight="medium" sx={{ mb: 1 }}>
-          Órgão responsável:
-        </Typography>
+{modalDeslocamento.aereo.includes("Frete aéreo Oficial") && (
+  <Box mt={2} display="flex" gap={2}>
+    <Box fontSize="1.4rem">🏛️</Box>
 
-        <TextField
-          select
-          fullWidth
-          size="small"
-          value={opcaoOrgao.freteOficial}
-          onChange={(e) => {
-            const valor = e.target.value;
-            handleSelectOrgao("freteOficial", valor === "Outros" ? "" : valor);
-            setOpcaoOrgao((prev) => ({ ...prev, freteOficial: valor }));
-          }}
-          sx={{
-            "& .MuiOutlinedInput-root": {
-              borderRadius: 2,
-              fontSize: "0.85rem",
-            },
-          }}
+    <TextField
+      select
+      fullWidth
+      size="small"
+      value={opcaoOrgao.aereo}
+      onChange={(e) => {
+        const valor = e.target.value;
+        handleSelectOrgao("aereo", valor === "Outros" ? "" : valor);
+        setOpcaoOrgao((prev) => ({ ...prev, aereo: valor }));
+      }}
+      displayEmpty
+      sx={{
+        "& .MuiOutlinedInput-root": {
+          borderRadius: 2,
+          fontSize: "0.85rem",
+        },
+        "& .MuiSelect-select": {
+          padding: "8px 10px",
+        },
+      }}
+      inputProps={{ displayEmpty: true }}
+    >
+      <MenuItem value="">
+        <Typography
+          variant="caption"
+          color="#B8B8B8"
+          sx={{ fontSize: "0.85rem" }}
         >
-          <MenuItem value="">Selecione o órgão</MenuItem>
-          {[...orgaosDisponiveis, "Outros"].map((opcao) => (
-            <MenuItem key={opcao} value={opcao}>
-              {opcao}
-            </MenuItem>
-          ))}
-        </TextField>
+          Selecione o órgão responsável
+        </Typography>
+      </MenuItem>
 
-        {opcaoOrgao.freteOficial === "Outros" && (
-          <TextField
-            fullWidth
-            size="small"
-            placeholder="Órgão"
-            value={orgaos.freteOficial}
-            onChange={(e) =>
-              setOrgaos((prev) => ({ ...prev, freteOficial: e.target.value }))
-            }
-            sx={{
-              mt: 2,
-              "& .MuiOutlinedInput-root": {
-                borderRadius: 2,
-                fontSize: "0.85rem",
-              },
-              "& input": {
-                padding: "8px 10px",
-              },
-            }}
-          />
-        )}
-      </Box>
-    )}
+      {[...orgaosDisponiveis, "Outros"].map((opcao) => (
+        <MenuItem key={opcao} value={opcao}>
+          {opcao}
+        </MenuItem>
+      ))}
+    </TextField>
+  </Box>
+)}
+
+
+
+
 
     {modalDeslocamento.aereo.includes("Outros") && (
-      <Box ml={4} mt={2}>
+      <Box  mt={2} display="flex" gap={2}>
+        <Box fontSize="1.4rem">🛩️</Box>
         <TextField
           fullWidth
           size="small"
@@ -1534,9 +1627,9 @@ async function fetchComunidades(forcar = false) {
         key={id}
         sx={{
           border: "1px solid #E0E0E0",
-          borderRadius: 2,
-          p: 2,
-          mb: 2,
+          borderRadius: 3,
+          p: 1,
+          mb: 1.5,
         }}
       >
         <FormControlLabel
@@ -1650,87 +1743,100 @@ async function fetchComunidades(forcar = false) {
 
 
 {tipoAtendimento.includes("previdencia") && (
-  <Box sx={{ mt: 4 }}>
-    <Typography
-      variant="subtitle1"
-      fontWeight="bold"
-      gutterBottom
-      sx={{ fontSize: "1rem" }}
+ <Box sx={{ mt: 4 }}>
+  <Typography
+    variant="subtitle1"
+    fontWeight="bold"
+    gutterBottom
+    sx={{ fontSize: "1.0rem" }}
+  >
+    🏫 3.2 Previdência Social
+  </Typography>
+
+  {["salario_maternidade", "aposentadoria", "pensao_morte", "auxilio_incapacidade", "auxilio_reclusao"].map((id) => (
+    <Box
+      key={id}
+      sx={{
+        border: "1px solid #E0E0E0",
+        borderRadius: 3,
+        p: 1,
+        mb: 1.5,
+      }}
     >
-      🏫 3.2 Previdência Social
-    </Typography>
+      <FormControlLabel
+        control={
+          <Checkbox
+            checked={previdenciaSelecionada.includes(id)}
+            onChange={() => togglePrevidencia(id)}
+            sx={{
+              color: "#2E7D32",
+              '&.Mui-checked': { color: "#2E7D32" },
+            }}
+          />
+        }
+        label={
+          <Typography sx={{ fontSize: "0.9rem" }}>
+            {id.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+          </Typography>
+        }
+      />
 
-    {["salario_maternidade", "aposentadoria", "pensao_morte", "auxilio_incapacidade", "auxilio_reclusao"].map((id) => (
-      <Box
-        key={id}
-        sx={{
-          border: "1px solid #ccc",
+      {previdenciaSelecionada.includes(id) && (
+        <Box sx={{ ml: 3, mt: 1 }}>
+          <FormGroup sx={{ gap: 1 }}>
+            {[
+              { key: "cear", label: "Preenchimento de Certidão de Exercício de Atividade Rural (CEAR)" },
+              { key: "meuInss", label: "Cadastro Meu INSS" },
+              { key: "requerimento", label: "Abertura de requerimento" },
+              { key: "consulta", label: "Consulta" },
+              { key: "exigencia", label: "Cumprimento de Exigência" }
+            ].map(({ key, label }) => (
+              <FormControlLabel
+                key={key}
+                control={
+                  <Checkbox
+                    checked={previdenciaDetalhes?.[id]?.[key] || false}
+                    onChange={() => toggleSubopcao(id, key)}
+                    size="small"
+                    sx={{
+                      color: "#2E7D32",
+                      '&.Mui-checked': { color: "#2E7D32" },
+                    }}
+                  />
+                }
+                label={<Typography sx={{ fontSize: "0.85rem" }}>{label}</Typography>}
+              />
+            ))}
+          </FormGroup>
+        </Box>
+      )}
+    </Box>
+  ))}
+
+  {/* Campo "Outros" fixo */}
+  <Box sx={{ mt: 2 }}>
+    <span style={{ fontSize: "0.85rem", fontWeight: 500, color: "#000" }}>Outros:</span>
+    <TextField
+      fullWidth
+      size="small"
+      placeholder="Descreva aqui"
+      value={previdenciaOutrosTexto}
+      onChange={(e) => setPrevidenciaOutrosTexto(e.target.value)}
+      sx={{
+        mt: 1,
+        '& .MuiOutlinedInput-root': {
           borderRadius: 2,
-          p: 2,
-          mb: 2,
-        }}
-      >
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={previdenciaSelecionada.includes(id)}
-              onChange={() => togglePrevidencia(id)}
-              sx={{
-                color: "#2E7D32",
-                '&.Mui-checked': {
-                  color: "#2E7D32",
-                },
-              }}
-            />
-          }
-          label={
-            <Typography sx={{ fontSize: "0.9rem" }}>
-              {id.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
-            </Typography>
-          }
-        />
-
-        {previdenciaSelecionada.includes(id) && (
-          <Box sx={{ ml: 3, mt: 1 }}>
-            <FormGroup sx={{ gap: 1 }}>
-              {[
-                {
-                  key: "cear",
-                  label:
-                    "Preenchimento de Certidão de Exercício de Atividade Rural (CEAR)",
-                },
-                { key: "meuInss", label: "Cadastro Meu INSS" },
-                { key: "requerimento", label: "Abertura de requerimento" },
-                { key: "consulta", label: "Consulta" },
-                { key: "exigencia", label: "Cumprimento de Exigência" },
-              ].map(({ key, label }) => (
-                <FormControlLabel
-                  key={key}
-                  control={
-                    <Checkbox
-                      checked={previdenciaDetalhes?.[id]?.[key] || false}
-                      onChange={() => toggleSubopcao(id, key)}
-                      size="small"
-                      sx={{
-                        color: "#2E7D32",
-                        '&.Mui-checked': {
-                          color: "#2E7D32",
-                        },
-                      }}
-                    />
-                  }
-                  label={<Typography sx={{ fontSize: "0.85rem" }}>{label}</Typography>}
-                />
-              ))}
-            </FormGroup>
-          </Box>
-        )}
-      </Box>
-    ))}
+          fontSize: "0.85rem",
+        },
+        '& input': {
+          padding: "8px 10px",
+        },
+      }}
+    />
   </Box>
+</Box>
+
 )}
-
-
 
 {tipoAtendimento.includes("documentacao") && (
   <Box sx={{ mt: 4 }}>
@@ -1744,13 +1850,13 @@ async function fetchComunidades(forcar = false) {
     </Typography>
 
     {["nascido_vivo", "registro_nascimento", "registro_obito", "cpf", "cin", "titulo_eleitor", "reservista"].map((id) => (
-      <Box
+    <Box
         key={id}
         sx={{
-          border: "1px solid #ccc",
-          borderRadius: 2,
-          p: 2,
-          mb: 2,
+          border: "1px solid #E0E0E0",
+          borderRadius: 3,
+          p: 1,
+          mb: 1.5,
         }}
       >
         <FormControlLabel
@@ -1850,33 +1956,43 @@ async function fetchComunidades(forcar = false) {
     </Typography>
 
     <FormGroup sx={{ gap: 1 }}>
-      {["ubs", "hospital", "dsei_y", "caps"].map((id) => (
-        <FormControlLabel
-          key={id}
-          control={
-            <Checkbox
-              checked={saudeSelecionada.includes(id)}
-              onChange={() => toggleSaude(id)}
-              sx={{
-                color: "#2E7D32",
-                '&.Mui-checked': {
-                  color: "#2E7D32",
-                },
-              }}
-            />
-          }
-          label={
-            <Typography sx={{ fontSize: "0.85rem" }}>
-              {{
-                ubs: "Unidade Básica de Saúde (UBS)",
-                hospital: "Hospital",
-                dsei_y: "Distrito Sanitário Especial Indígena Yanomami (DSEI-Y)",
-                caps: "Centro de Atenção Psicossocial (CAPS)",
-              }[id]}
-            </Typography>
-          }
+    {["ubs", "hospital", "dsei_y", "caps"].map((id) => (
+  <Box
+    key={id}
+    sx={{
+      border: "1px solid #E0E0E0",
+      borderRadius: 3,
+      p: 1,
+      mb: 1.5,
+    }}
+  >
+    <FormControlLabel
+      control={
+        <Checkbox
+          checked={saudeSelecionada.includes(id)}
+          onChange={() => toggleSaude(id)}
+          sx={{
+            color: "#2E7D32",
+            '&.Mui-checked': {
+              color: "#2E7D32",
+            },
+          }}
         />
-      ))}
+      }
+      label={
+        <Typography sx={{ fontSize: "0.85rem" }}>
+          {{
+            ubs: "Unidade Básica de Saúde (UBS)",
+            hospital: "Hospital",
+            dsei_y: "Distrito Sanitário Especial Indígena Yanomami (DSEI-Y)",
+            caps: "Centro de Atenção Psicossocial (CAPS)",
+          }[id]}
+        </Typography>
+      }
+    />
+  </Box>
+))}
+
     </FormGroup>
 
     <Box sx={{ mt: 2 }}>
@@ -1913,35 +2029,45 @@ async function fetchComunidades(forcar = false) {
       🍽️ 3.5 Segurança Alimentar
     </Typography>
 
-    <FormGroup sx={{ gap: 1 }}>
+      <FormGroup sx={{ gap: 1 }}>
       {["cesta", "refeicao", "restaurante", "encaminhamento"].map((id) => (
-        <FormControlLabel
+        <Box
           key={id}
-          control={
-            <Checkbox
-              checked={segAlimentarSelecionada.includes(id)}
-              onChange={() => toggleSegAlimentar(id)}
-              sx={{
-                color: "#2E7D32",
-                '&.Mui-checked': {
+          sx={{
+            border: "1px solid #E0E0E0",
+            borderRadius: 3,
+            p: 1,
+            mb: 1.5,
+          }}
+        >
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={segAlimentarSelecionada.includes(id)}
+                onChange={() => toggleSegAlimentar(id)}
+                sx={{
                   color: "#2E7D32",
-                },
-              }}
-            />
-          }
-          label={
-            <Typography sx={{ fontSize: "0.85rem" }}>
-              {{
-                cesta: "Distribuição de Cesta de Alimentos",
-                refeicao: "Oferta de Refeição Pronta",
-                restaurante: "Encaminhamento a Restaurante Popular",
-                encaminhamento: "Encaminhamento para Assistência Alimentar",
-              }[id]}
-            </Typography>
-          }
-        />
+                  '&.Mui-checked': {
+                    color: "#2E7D32",
+                  },
+                }}
+              />
+            }
+            label={
+              <Typography sx={{ fontSize: "0.85rem" }}>
+                {{
+                  cesta: "Distribuição de Cesta de Alimentos",
+                  refeicao: "Oferta de Refeição Pronta",
+                  restaurante: "Encaminhamento a Restaurante Popular",
+                  encaminhamento: "Encaminhamento para Assistência Alimentar",
+                }[id]}
+              </Typography>
+            }
+          />
+        </Box>
       ))}
     </FormGroup>
+
 
     {(segAlimentarSelecionada.includes("cesta") ||
       segAlimentarSelecionada.includes("refeicao")) && (
@@ -2028,194 +2154,214 @@ async function fetchComunidades(forcar = false) {
     <Typography
       variant="subtitle1"
       fontWeight="bold"
-      sx={{ fontSize: "1rem", mb: 2, mt: 4 }}
+      sx={{ fontSize: "1rem", mb: 2, mt: 4, display: "flex", alignItems: "center", gap: 1 }}
     >
       🧰 3.6 Outros Atendimentos
     </Typography>
 
-    <FormGroup sx={{ flexDirection: "column", gap: 1 }}>
-      <FormControlLabel
-        control={
+    <FormGroup sx={{ flexDirection: "column", gap: 2 }}>
+      {/* Entrega de Insumos */}
+      <Box sx={{ border: "1px solid #E0E0E0", borderRadius: 3, p: 1.5 }}>
+        <Box display="flex" alignItems="center" gap={1}>
           <Checkbox
             checked={outrosDetalhes.insumos}
             onChange={() => toggleOutros("insumos")}
             sx={{ color: "#2E7D32", '&.Mui-checked': { color: "#2E7D32" } }}
             size="small"
           />
-        }
-        label={<Typography sx={{ fontSize: "0.85rem" }}>Entrega de Insumos</Typography>}
-      />
-      {outrosDetalhes.insumos && (
-        <Box ml={4}>
-          <FormGroup sx={{ flexDirection: "column", gap: 1 }}>
-            <FormControlLabel
-              control={
+          <span style={{ fontSize: "0.85rem" }}>Entrega de Insumos</span>
+        </Box>
+
+        {outrosDetalhes.insumos && (
+          <Box ml={4} mt={1}>
+            <FormGroup sx={{ flexDirection: "column", gap: 1 }}>
+              <Box display="flex" alignItems="center" gap={1}>
                 <Checkbox
                   checked={outrosDetalhes.rede_dormir}
                   onChange={() => toggleOutros("rede_dormir")}
                   sx={{ color: "#2E7D32", '&.Mui-checked': { color: "#2E7D32" } }}
                   size="small"
                 />
-              }
-              label={<Typography sx={{ fontSize: "0.85rem" }}>Rede de Dormir</Typography>}
-            />
-            {outrosDetalhes.rede_dormir && (
-              <TextField
-                fullWidth
-                type="number"
-                size="small"
-                label="Quantidade de Redes"
-                value={outrosDetalhes.rede_dormir_qtd || ""}
-                onChange={(e) => setOutrosDetalhes((prev) => ({ ...prev, rede_dormir_qtd: parseInt(e.target.value) }))}
-                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, fontSize: "0.85rem" } }}
-              />
-            )}
-
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={outrosDetalhes.outros}
-                  onChange={() => toggleOutros("outros")}
-                  sx={{ color: "#2E7D32", '&.Mui-checked': { color: "#2E7D32" } }}
-                  size="small"
-                />
-              }
-              label={<Typography sx={{ fontSize: "0.85rem" }}>Outros Itens</Typography>}
-            />
-            {outrosDetalhes.outros && (
-              <Box>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="Descrição"
-                  value={outrosDetalhes.outros_desc || ""}
-                  onChange={(e) => setOutrosDetalhes((prev) => ({ ...prev, outros_desc: e.target.value }))}
-                  sx={{ mt: 1, '& .MuiOutlinedInput-root': { borderRadius: 2, fontSize: "0.85rem" } }}
-                />
-                <TextField
-                  fullWidth
-                  type="number"
-                  size="small"
-                  label="Quantidade"
-                  value={outrosDetalhes.outros_qtd || ""}
-                  onChange={(e) => setOutrosDetalhes((prev) => ({ ...prev, outros_qtd: parseInt(e.target.value) }))}
-                  sx={{ mt: 2, '& .MuiOutlinedInput-root': { borderRadius: 2, fontSize: "0.85rem" } }}
-                />
+                <span style={{ fontSize: "0.85rem" }}>Rede de Dormir</span>
               </Box>
-            )}
-          </FormGroup>
-        </Box>
-      )}
 
-      <FormControlLabel
-        control={
+              {outrosDetalhes.rede_dormir && (
+                <Box>
+                  <span style={{ fontSize: "0.85rem", color: "#555", display: "inline-block", marginBottom: 4, marginLeft: 2 }}>
+                    Quantidade de Redes
+                  </span>
+                  <TextField
+                    fullWidth
+                    type="number"
+                    size="small"
+                    placeholder="Digite a quantidade"
+                    value={outrosDetalhes.rede_dormir_qtd || ""}
+                    onChange={(e) =>
+                      setOutrosDetalhes((prev) => ({ ...prev, rede_dormir_qtd: parseInt(e.target.value) }))
+                    }
+                    sx={{
+                      '& .MuiOutlinedInput-root': { borderRadius: 2, fontSize: "0.85rem" },
+                      '& input': { padding: "8px 10px" },
+                    }}
+                  />
+                </Box>
+              )}
+            </FormGroup>
+          </Box>
+        )}
+      </Box>
+
+      {/* Acompanhamento */}
+      <Box sx={{ border: "1px solid #E0E0E0", borderRadius: 3, p: 1.5 }}>
+        <Box display="flex" alignItems="center" gap={1}>
           <Checkbox
             checked={outrosDetalhes.acompanhamento}
             onChange={() => toggleOutros("acompanhamento")}
             sx={{ color: "#2E7D32", '&.Mui-checked': { color: "#2E7D32" } }}
             size="small"
           />
-        }
-        label={<Typography sx={{ fontSize: "0.85rem" }}>Acompanhamento</Typography>}
-      />
-      {outrosDetalhes.acompanhamento && (
-        <Box ml={4}>
-          <FormGroup sx={{ flexDirection: "column", gap: 1 }}>
-            {["banco", "comercio", "delegacia"].map((key) => (
-              <FormControlLabel
-                key={key}
-                control={
+          <span style={{ fontSize: "0.85rem" }}>Acompanhamento</span>
+        </Box>
+
+        {outrosDetalhes.acompanhamento && (
+          <Box ml={4} mt={1}>
+            <FormGroup sx={{ flexDirection: "column", gap: 1 }}>
+              {["banco", "comercio", "delegacia"].map((key) => (
+                <Box key={key} display="flex" alignItems="center" gap={1}>
                   <Checkbox
                     checked={outrosDetalhes[key] || false}
                     onChange={() => toggleOutros(key)}
                     sx={{ color: "#2E7D32", '&.Mui-checked': { color: "#2E7D32" } }}
                     size="small"
                   />
-                }
-                label={<Typography sx={{ fontSize: "0.85rem" }}>{{
-                  banco: "Banco / Agência",
-                  comercio: "Comércio Local",
-                  delegacia: "Delegacia",
-                }[key]}</Typography>}
-              />
-            ))}
-          </FormGroup>
-        </Box>
-      )}
+                  <span style={{ fontSize: "0.85rem" }}>
+                    {{
+                      banco: "Banco / Agência",
+                      comercio: "Comércio Local",
+                      delegacia: "Delegacia",
+                    }[key]}
+                  </span>
+                </Box>
+              ))}
+            </FormGroup>
+          </Box>
+        )}
+      </Box>
 
-      <FormControlLabel
-        control={
+      {/* Artesanato */}
+      <Box sx={{ border: "1px solid #E0E0E0", borderRadius: 3, p: 1.5 }}>
+        <Box display="flex" alignItems="center" gap={1}>
           <Checkbox
             checked={outrosDetalhes.artesanato}
             onChange={() => toggleOutros("artesanato")}
             sx={{ color: "#2E7D32", '&.Mui-checked': { color: "#2E7D32" } }}
             size="small"
           />
-        }
-        label={<Typography sx={{ fontSize: "0.85rem" }}>Atividade com Artesanato</Typography>}
-      />
+          <span style={{ fontSize: "0.85rem" }}>Atividade com Artesanato</span>
+        </Box>
+      </Box>
 
-      <FormControlLabel
-        control={
+      {/* Apoio Logístico */}
+      <Box sx={{ border: "1px solid #E0E0E0", borderRadius: 3, p: 1.5 }}>
+        <Box display="flex" alignItems="center" gap={1}>
           <Checkbox
             checked={outrosDetalhes.apoio_logistico}
             onChange={() => toggleOutros("apoio_logistico")}
             sx={{ color: "#2E7D32", '&.Mui-checked': { color: "#2E7D32" } }}
             size="small"
           />
-        }
-        label={<Typography sx={{ fontSize: "0.85rem" }}>Apoio Logístico</Typography>}
-      />
-      {outrosDetalhes.apoio_logistico && (
-        <Box ml={4}>
-          <FormGroup sx={{ flexDirection: "column", gap: 1 }}>
-            <FormControlLabel
-              control={
+          <span style={{ fontSize: "0.85rem" }}>Apoio Logístico</span>
+        </Box>
+
+        {outrosDetalhes.apoio_logistico && (
+          <Box ml={4} mt={1}>
+            <FormGroup sx={{ flexDirection: "column", gap: 1 }}>
+              <Box display="flex" alignItems="center" gap={1}>
                 <Checkbox
                   checked={outrosDetalhes.combustivel || false}
                   onChange={() => toggleOutros("combustivel")}
                   sx={{ color: "#2E7D32", '&.Mui-checked': { color: "#2E7D32" } }}
                   size="small"
                 />
-              }
-              label={<Typography sx={{ fontSize: "0.85rem" }}>Combustível</Typography>}
-            />
-            {outrosDetalhes.combustivel && (
-              <TextField
-                fullWidth
-                type="number"
-                size="small"
-                label="Quantidade de litros"
-                value={outrosDetalhes.combustivel_qtd || ""}
-                onChange={(e) => setOutrosDetalhes((prev) => ({ ...prev, combustivel_qtd: parseInt(e.target.value) }))}
-                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, fontSize: "0.85rem" } }}
-              />
-            )}
+                <span style={{ fontSize: "0.85rem" }}>Combustível</span>
+              </Box>
 
-            {["deslocamento_aereo", "deslocamento_terrestre", "deslocamento_fluvial"].map((key) => (
-              <FormControlLabel
-                key={key}
-                control={
+              {outrosDetalhes.combustivel && (
+                <Box>
+                  <span
+                    style={{
+                      fontSize: "0.85rem",
+                      color: "#555",
+                      display: "inline-block",
+                      marginBottom: 4,
+                      marginLeft: 2,
+                    }}
+                  >
+                    Quantidade de litros
+                  </span>
+                  <TextField
+                    fullWidth
+                    type="number"
+                    size="small"
+                    placeholder="Digite a quantidade"
+                    value={outrosDetalhes.combustivel_qtd || ""}
+                    onChange={(e) =>
+                      setOutrosDetalhes((prev) => ({ ...prev, combustivel_qtd: parseInt(e.target.value) }))
+                    }
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                        fontSize: "0.85rem",
+                      },
+                      '& input': {
+                        padding: "8px 10px",
+                      },
+                    }}
+                  />
+                </Box>
+              )}
+
+              {["deslocamento_aereo", "deslocamento_terrestre", "deslocamento_fluvial"].map((key) => (
+                <Box key={key} display="flex" alignItems="center" gap={1}>
                   <Checkbox
                     checked={outrosDetalhes[key] || false}
                     onChange={() => toggleOutros(key)}
                     sx={{ color: "#2E7D32", '&.Mui-checked': { color: "#2E7D32" } }}
                     size="small"
                   />
-                }
-                label={<Typography sx={{ fontSize: "0.85rem" }}>{{
-                  deslocamento_aereo: "Deslocamento Aéreo",
-                  deslocamento_terrestre: "Deslocamento Terrestre",
-                  deslocamento_fluvial: "Deslocamento Fluvial",
-                }[key]}</Typography>}
-              />
-            ))}
-          </FormGroup>
-        </Box>
-      )}
+                  <span style={{ fontSize: "0.85rem" }}>
+                    {{
+                      deslocamento_aereo: "Deslocamento Aéreo",
+                      deslocamento_terrestre: "Deslocamento Terrestre",
+                      deslocamento_fluvial: "Deslocamento Fluvial",
+                    }[key]}
+                  </span>
+                </Box>
+              ))}
+            </FormGroup>
+          </Box>
+        )}
+      </Box>
+
+      <Box>
+        <span style={{ fontSize: "0.85rem", fontWeight: 500, color: "#000" }}>Outros:</span>
+        <TextField
+          fullWidth
+          size="small"
+          placeholder="Descreva aqui"
+          value={outrosDetalhes.outros_geral || ""}
+          onChange={(e) => setOutrosDetalhes((prev) => ({ ...prev, outros_geral: e.target.value }))}
+          sx={{
+            mt: 1,
+            '& .MuiOutlinedInput-root': { borderRadius: 2, fontSize: "0.85rem" },
+            '& input': { padding: "8px 10px" },
+          }}
+        />
+      </Box>
     </FormGroup>
   </Box>
 )}
+
 </Box>
 
  <Box

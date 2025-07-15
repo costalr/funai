@@ -88,7 +88,7 @@ export default function LoginTelaYanomami() {
             mb: 8,
           }}
         >
-          YANOMAMI & YE’KUANA
+          YANOMAMI & YE’KWANA
         </Typography>
 
         {erro && (
