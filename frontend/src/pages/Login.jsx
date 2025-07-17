@@ -34,7 +34,7 @@ export default function LoginTelaYanomami() {
       localStorage.setItem("refresh_token", refresh);
       localStorage.setItem("usuario", JSON.stringify(user));
 
-      navigate("/dashboard");
+      navigate("/home");
     } catch (error) {
       if (error.response?.status === 401) {
         setErro("Credenciais inválidas. Verifique e tente novamente.");
