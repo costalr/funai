@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Teste Timestamp com GPS</title>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; background: #f9f9f9; }
+    input, button, select { margin-top: 1rem; display: block; font-size: 1rem; }
+    label { margin-top: 1.5rem; display: block; font-weight: bold; }
+    img { max-width: 100%; margin-top: 1rem; border: 1px solid #ccc; }
+  </style>
+</head>
+<body>
+  <h2>🧪 Teste: Foto com Timestamp + Coordenadas</h2>
+
+  <label>📍 Nome da Comunidade</label>
+  <input type="text" id="nomeComunidade" placeholder="Digite o nome da comunidade" />
+
+  <label>📷 Tire uma foto</label>
+  <input type="file" accept="image/*" capture="environment" id="inputImagem" />
+
+  <button onclick="gerarImagem()">Gerar Imagem com Timestamp</button>
+
+  <h3>Resultado:</h3>
+  <img id="imagemResultado" />
+
+  <script>
+    async function getCoordenadas() {
+      return new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            resolve({
+              latitude: pos.coords.latitude.toFixed(5),
+              longitude: pos.coords.longitude.toFixed(5),
+            });
+          },
+          (err) => reject("Erro ao obter coordenadas: " + err.message)
+        );
+      });
+    }
+
+    function gerarTextoCarimbo({ nomeProjeto, nomeComunidade, latitude, longitude, data }) {
+      const opcoesData = { weekday: "long", year: "numeric", month: "long", day: "numeric" };
+      const dataFormatada = new Intl.DateTimeFormat("pt-BR", opcoesData).format(data);
+      const hora = data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
+      return `${nomeProjeto}
+${nomeComunidade}
+Coordenadas: ${latitude}, ${longitude}
+${dataFormatada} às ${hora}`;
+    }
+
+    async function addTimestampToImage(file, textoCarimbo) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        const img = new Image();
+
+        reader.onload = () => {
+          img.onload = () => {
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d");
+
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+
+            const linhas = textoCarimbo.split("\n");
+            const fontSize = Math.floor(canvas.width * 0.025);
+            const lineHeight = fontSize * 1.4;
+            ctx.font = `${fontSize}px sans-serif`;
+            ctx.fillStyle = "white";
+            ctx.strokeStyle = "black";
+            ctx.lineWidth = 2;
+
+            let y = canvas.height - (linhas.length * lineHeight) - 20;
+            const x = 20;
+
+            for (const linha of linhas) {
+              ctx.strokeText(linha, x, y);
+              ctx.fillText(linha, x, y);
+              y += lineHeight;
+            }
+
+            canvas.toBlob((blob) => {
+              if (!blob) return reject("Erro ao gerar imagem");
+              const url = URL.createObjectURL(blob);
+              resolve(url);
+            }, "image/jpeg", 0.95);
+          };
+
+          img.src = reader.result;
+        };
+
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function gerarImagem() {
+      const file = document.getElementById("inputImagem").files[0];
+      const nomeComunidade = document.getElementById("nomeComunidade").value || "Comunidade não informada";
+
+      if (!file) {
+        alert("Selecione ou tire uma foto.");
+        return;
+      }
+
+      let coordenadas;
+      try {
+        coordenadas = await getCoordenadas();
+      } catch (err) {
+        alert(err);
+        return;
+      }
+
+      const texto = gerarTextoCarimbo({
+        nomeProjeto: "Missão Proteção Social Yanomami",
+        nomeComunidade,
+        latitude: coordenadas.latitude,
+        longitude: coordenadas.longitude,
+        data: new Date(),
+      });
+
+      const imagemURL = await addTimestampToImage(file, texto);
+      document.getElementById("imagemResultado").src = imagemURL;
+    }
+  </script>
+</body>
+</html>

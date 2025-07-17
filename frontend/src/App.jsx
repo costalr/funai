@@ -1,8 +1,10 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Home from "./pages/Home";
-import Dashboard from "./pages/Dashboard";
+import Dashboard from "./pages/DashboardGeral";
+import DashboardPessoal from "./pages/DashboardPessoal";
 import Login from "./pages/Login";
 import RequireAuth from "./components/RequireAuth";
+import FormularioProtecao from "./components/FormProtecaoSocial";
 import TesteSupabase from "./debug/TesteSupabase";
 
 export default function App() {
@@ -12,11 +14,39 @@ export default function App() {
         <Route path="/" element={<Navigate to="/login" />} />
         <Route path="/login" element={<Login />} />
         <Route path="/teste-supabase" element={<TesteSupabase />} />
+
+        <Route
+          path="/home"
+          element={
+            <RequireAuth>
+              <Home />
+            </RequireAuth>
+          }
+        />
+
+        <Route
+          path="/formulario"
+          element={
+            <RequireAuth>
+              <FormularioProtecao />
+            </RequireAuth>
+          }
+        />
+
         <Route
           path="/dashboard"
           element={
             <RequireAuth>
               <Dashboard />
+            </RequireAuth>
+          }
+        />
+
+        <Route
+          path="/minha-dashboard"
+          element={
+            <RequireAuth>
+              <DashboardPessoal />
             </RequireAuth>
           }
         />

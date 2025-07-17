@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabaseCestas } from "../lib/supabaseCestas"; 
+import { supabaseCestas } from "../lib/Supabase/supabaseCestas"; 
 
 export default function TesteSupabase() {
   const [status, setStatus] = useState("🔄 Testando conexão...");

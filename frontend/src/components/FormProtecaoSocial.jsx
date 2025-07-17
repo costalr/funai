@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import { supabaseAssistencia } from "../lib/supabaseAssistencia";
-import { supabaseCestas } from "../lib/supabaseCestas";
+import { supabaseAssistencia } from "../lib/Supabase/supabaseAssistencia"
+import { supabaseCestas } from "../lib/Supabase/supabaseCestas"
+import * as exifr from 'exifr';
+import PhotoCamera from '@mui/icons-material/PhotoCamera';
 import {
   Grid,
   TextField,
@@ -14,8 +16,13 @@ import {
   MenuItem
 } from "@mui/material";
 
+
+
+
 export default function FormularioProtecao() {
   const [servidor, setServidor] = useState("");
+  const [genero, setGenero] = useState("");
+  const [dataNascimento, setDataNascimento] = useState("");
   const [dataHora, setDataHora] = useState("");
   const [coordenadas, setCoordenadas] = useState({ latitude: "", longitude: "" });
   const [nome, setNome] = useState("");
@@ -88,7 +95,8 @@ export default function FormularioProtecao() {
   const [localUnidade, setLocalUnidade] = useState("");
   const [saudeDetalhes, setSaudeDetalhes] = useState({ outros: "" });
   const [segAlimentarSelecionada, setSegAlimentarSelecionada] = useState([]);
-  const [segAlimentarDetalhes, setSegAlimentarDetalhes] = useState({ refeicao: 0, cesta: 0, outros: "" });
+  const [segAlimentarDetalhes, setSegAlimentarDetalhes] = useState({ refeicao: 0, cesta: 0, outros: "", imagemEntrega: null  });
+  const [avisoFoto, setAvisoFoto] = useState(null);
   const [previdenciaOutrosTexto, setPrevidenciaOutrosTexto] = useState("");
   const [dataAtendimento, setDataAtendimento] = useState("");
   const [outrosModais, setOutrosModais] = useState({
@@ -120,6 +128,7 @@ export default function FormularioProtecao() {
     deslocamento_fluvial: false
   });
   const [observacoes, setObservacoes] = useState("");
+  
   const [erros, setErros] = useState([]);
  const validarFormulario = () => {
   const novosErros = [];
@@ -175,6 +184,43 @@ export default function FormularioProtecao() {
   setIsSubmitting(true); // Ativa bloqueio de envio imediatamente
 
   try {
+
+        // 🔎 Verifica se a pessoa já existe
+    const { data: pessoaExistente, error: erroPessoa } = await supabaseAssistencia
+    .from("pessoa_atendida")
+    .select("id_pessoa")
+    .eq("nome", nome.trim())
+    .eq("id_comunidade", comunidadeSelecionada?.value === "outros" ? null : comunidadeSelecionada?.value)
+    .maybeSingle();
+
+    let idPessoa;
+
+    if (pessoaExistente) {
+    idPessoa = pessoaExistente.id_pessoa;
+    } else {
+    // Se não existir, insere nova pessoa
+    const { data: novaPessoa, error: erroNovaPessoa } = await supabaseAssistencia
+      .from("pessoa_atendida")
+      .insert([
+        {
+          nome: nome.trim(),
+          genero: genero || null,
+          data_nascimento: dataNascimento || null,
+          id_comunidade: comunidadeSelecionada?.value === "outros" ? null : Number(comunidadeSelecionada?.value)
+        }        
+      ])
+      .select()
+      .single();
+
+    if (erroNovaPessoa) {
+      alert("Erro ao salvar pessoa atendida: " + erroNovaPessoa.message);
+      setIsSubmitting(false);
+      return;
+    }
+
+    idPessoa = novaPessoa.id_pessoa;
+    }
+
     // ✅ 1. Inserção em informacoes_pessoais
     const { data: atendimentoData, error: atendimentoError } = await supabaseAssistencia
       .from("informacoes_pessoais")
@@ -307,8 +353,11 @@ export default function FormularioProtecao() {
     }
 
     // ✅ 7. Atendimento: Segurança Alimentar
-    if (tipoAtendimento.includes("alimentos")) {
-      await supabaseAssistencia.from("atendimento_seguranca_alimentar").insert([{
+if (tipoAtendimento.includes("alimentos")) {
+  const { data, error } = await supabaseAssistencia
+    .from("atendimento_seguranca_alimentar")
+    .insert([
+      {
         id_atendimento,
         cesta: segAlimentarSelecionada.includes("cesta"),
         quantidade_cesta: segAlimentarSelecionada.includes("cesta") ? segAlimentarDetalhes.cesta : null,
@@ -317,8 +366,29 @@ export default function FormularioProtecao() {
         restaurante: segAlimentarSelecionada.includes("restaurante"),
         encaminhamento: segAlimentarSelecionada.includes("encaminhamento"),
         outros: segAlimentarDetalhes.outros || null
-      }]);
+      }
+    ])
+    .select("id")
+    .single(); // <-- pega o id gerado
+
+  if (error) {
+    throw new Error("Erro ao salvar segurança alimentar");
+  }
+
+  const idAtendimentoSegAlimentar = data?.id;
+
+  // Se houver imagem, faz upload e atualiza a URL no banco
+  if (segAlimentarDetalhes.imagemEntrega) {
+    const url = await uploadFotoEntrega(
+      segAlimentarDetalhes.imagemEntrega,
+      idAtendimentoSegAlimentar
+    );
+
+    if (!url) {
+      console.warn("⚠️ Imagem enviada, mas não foi possível salvar a URL.");
     }
+  }
+}
 
     // ✅ 8. Atendimento: Outros
     if (tipoAtendimento.includes("outros")) {
@@ -587,6 +657,16 @@ async function fetchComunidades(forcar = false) {
     return;
   }
 
+  if (segAlimentarDetalhes.imagemEntrega) {
+  const url = await uploadFotoEntrega(segAlimentarDetalhes.imagemEntrega, idAtendimento);
+
+  if (!url) {
+    console.warn("⚠️ A imagem foi enviada, mas a URL não foi salva no banco.");
+  }
+}
+
+
+
   // Mapa para contar duplicados com base na combinação nome + subpolo + polo
   const chaveComunidade = (c) => {
     const sub = c.comunidade_id_subpolo_fkey?.nome_subpolo || "";
@@ -606,6 +686,7 @@ async function fetchComunidades(forcar = false) {
     contadorPorNome[c.nome_comunidade] = (contadorPorNome[c.nome_comunidade] || 0) + 1;
   }
 
+  
   const formatadas = data.map((c) => {
     const nome = c.nome_comunidade;
     const subpolo = c.comunidade_id_subpolo_fkey?.nome_subpolo || "";
@@ -637,7 +718,62 @@ async function fetchComunidades(forcar = false) {
   localStorage.setItem("comunidades_cache_time", agora.toString());
 }
 
-  
+
+
+  async function uploadFotoEntrega(imagemFile, idAtendimento) {
+  if (!imagemFile || !idAtendimento) {
+    console.error("❌ Falta imagem ou ID:", { imagemFile, idAtendimento });
+    return null;
+  }
+
+  const fileName = `entrega_${idAtendimento}_${Date.now()}.jpg`;
+  console.log("📦 Iniciando upload da imagem:", fileName);
+
+  // 1. Upload da imagem
+  const { error: uploadError } = await supabaseAssistencia.storage
+    .from('fotos-entregas')
+    .upload(fileName, imagemFile, {
+      contentType: 'image/jpeg',
+      upsert: true,
+    });
+
+  if (uploadError) {
+    console.error("🛑 Erro no upload para o bucket:", uploadError.message, uploadError);
+    return null;
+  }
+
+  console.log("✅ Upload realizado com sucesso");
+
+  // 2. Obter a URL pública
+  const { data: publicUrlData } = supabaseAssistencia
+    .storage
+    .from('fotos-entregas')
+    .getPublicUrl(fileName);
+
+  const urlFoto = publicUrlData?.publicUrl;
+
+  if (!urlFoto) {
+    console.error("❌ Não foi possível obter a URL pública");
+    return null;
+  }
+
+  console.log("🌐 URL gerada:", urlFoto);
+
+  // 3. Atualizar a tabela
+  const { error: updateError } = await supabaseAssistencia
+    .from('atendimento_seguranca_alimentar')
+    .update({ url_foto_entrega: urlFoto })
+    .eq('id', idAtendimento);
+
+  if (updateError) {
+    console.error("🛑 Erro ao atualizar o banco:", updateError.message, updateError);
+    return null;
+  }
+
+  console.log("📌 URL salva no banco com sucesso");
+  return urlFoto;
+}
+
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
@@ -915,6 +1051,54 @@ async function fetchComunidades(forcar = false) {
         }}
       />
     </Grid>
+
+    <Grid item xs={12} sm={3}>
+  <Typography variant="caption" fontWeight="medium" color="text.secondary" sx={{ mb: 0.5 }}>
+    Gênero
+  </Typography>
+  <TextField
+    select
+    value={genero}
+    onChange={(e) => setGenero(e.target.value)}
+    fullWidth
+    size="small"
+    sx={{
+      "& .MuiOutlinedInput-root": {
+        borderRadius: 2,
+        fontSize: "0.85rem",
+      },
+    }}
+  >
+    <MenuItem value="">Não informado</MenuItem>
+    <MenuItem value="feminino">Feminino</MenuItem>
+    <MenuItem value="masculino">Masculino</MenuItem>
+    <MenuItem value="outro">Outro</MenuItem>
+  </TextField>
+</Grid>
+
+<Grid item xs={12} sm={3}>
+  <Typography variant="caption" fontWeight="medium" color="text.secondary" sx={{ mb: 0.5 }}>
+    Data de Nascimento
+  </Typography>
+  <TextField
+    type="date"
+    value={dataNascimento}
+    onChange={(e) => setDataNascimento(e.target.value)}
+    fullWidth
+    size="small"
+    InputLabelProps={{ shrink: true }}
+    sx={{
+      "& .MuiOutlinedInput-root": {
+        borderRadius: 2,
+        fontSize: "0.85rem",
+      },
+      "& input": {
+        padding: "8px 10px",
+      },
+    }}
+  />
+</Grid>
+
 
 {/* Comunidade */}
 <Grid item xs={12}>
@@ -2068,12 +2252,11 @@ async function fetchComunidades(forcar = false) {
       ))}
     </FormGroup>
 
-
-    {(segAlimentarSelecionada.includes("cesta") ||
-      segAlimentarSelecionada.includes("refeicao")) && (
-      <Grid container spacing={2} sx={{ mt: 2 }}>
-        {segAlimentarSelecionada.includes("cesta") && (
-          <Grid item xs={12} sm={6}>
+ 
+     {(segAlimentarSelecionada.includes("cesta")) && (
+        <>
+          {/* Campo: Quantidade de Cestas */}
+          <Grid item xs={12}>
             <TextField
               label="Quantidade de Cestas"
               type="number"
@@ -2095,34 +2278,135 @@ async function fetchComunidades(forcar = false) {
               }}
             />
           </Grid>
-        )}
-        {segAlimentarSelecionada.includes("refeicao") && (
-          <Grid item xs={12} sm={6}>
-            <TextField
-              label="Quantidade de Refeições"
-              type="number"
-              inputProps={{ min: 0 }}
-              value={segAlimentarDetalhes.refeicao}
-              onChange={(e) =>
-                setSegAlimentarDetalhes((prev) => ({
-                  ...prev,
-                  refeicao: parseInt(e.target.value),
-                }))
-              }
-              fullWidth
-              size="small"
-              sx={{
-                "& .MuiOutlinedInput-root": {
+
+          {/* Campo: Upload da Imagem */}
+          <Grid item xs={12}>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+              <Typography
+                variant="caption"
+                fontWeight="medium"
+                color="text.secondary"
+                sx={{ fontSize: "0.75rem", mt: 2 }}
+              >
+                Registro Fotográfico da Entrega
+              </Typography>
+
+              <Button
+                variant="outlined"
+                component="label"
+                fullWidth
+                size="small"
+                startIcon={<PhotoCamera />}
+                sx={{
+                  textTransform: "none",
                   borderRadius: 2,
                   fontSize: "0.85rem",
-                },
-              }}
-            />
-          </Grid>
-        )}
-      </Grid>
-    )}
+                  justifyContent: "flex-start",
+                  padding: "8px 10px",
+                }}
+              >
+                {segAlimentarDetalhes.imagemEntrega
+                  ? segAlimentarDetalhes.imagemEntrega.name
+                  : "Tirar ou escolher foto"}
 
+                <input
+                  type="file"
+                  hidden
+                  accept="image/*"
+                  capture="environment"
+                  onChange={async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    let exifData = null;
+                    try {
+                      exifData = await exifr.parse(file, { gps: true });
+                    } catch (err) {
+                      console.warn("Erro ao ler EXIF:", err);
+                    }
+
+                    const temGPS = !!exifData?.latitude && !!exifData?.longitude;
+                    const temData = !!exifData?.DateTimeOriginal;
+
+                    if (!temGPS || !temData) {
+                      setAvisoFoto("⚠️ A imagem não contém dados de localização e/ou data. Ela será enviada sem carimbo.");
+                      setSegAlimentarDetalhes((prev) => ({
+                        ...prev,
+                        imagemEntrega: file,
+                      }));
+                      return;
+                    }
+
+                    const nomeProjeto = "Missão Proteção Social Yanomami";
+                    const nomeComunidade =
+                      comunidadeSelecionada?.value === "outros"
+                        ? comunidadeManual
+                        : comunidadeSelecionada?.label || "Comunidade não informada";
+
+                    const latitude = exifData.latitude;
+                    const longitude = exifData.longitude;
+                    const data = exifData.DateTimeOriginal;
+
+                    const opcoesData = {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    };
+                    const dataFormatada = new Intl.DateTimeFormat("pt-BR", opcoesData).format(data);
+                    const hora = new Date(data).toLocaleTimeString("pt-BR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    });
+
+                    const textoCarimbo = `${nomeProjeto}
+${nomeComunidade}
+Coordenadas: ${latitude}, ${longitude}
+${dataFormatada} às ${hora}`;
+
+                    const blob = await addTimestampToImage(file, textoCarimbo);
+                    const imagemFinal = new File([blob], `entrega_${Date.now()}.jpg`, {
+                      type: "image/jpeg",
+                    });
+
+                    setAvisoFoto(null); // limpa o aviso
+                    setSegAlimentarDetalhes((prev) => ({
+                      ...prev,
+                      imagemEntrega: imagemFinal,
+                    }));
+                  }}
+                />
+              </Button>
+
+              {/* Aviso caso não tenha EXIF */}
+              {avisoFoto && (
+                <Typography variant="body2" color="warning.main" sx={{ mt: 1 }}>
+                  {avisoFoto}
+                </Typography>
+              )}
+            </Box>
+          </Grid>
+
+          {/* Pré-visualização da imagem */}
+          {segAlimentarDetalhes.imagemEntrega && (
+            <Grid item xs={12}>
+              <Typography variant="caption" color="text.secondary">
+                Pré-visualização da imagem:
+              </Typography>
+              <img
+                src={URL.createObjectURL(segAlimentarDetalhes.imagemEntrega)}
+                alt="Imagem da entrega"
+                style={{
+                  maxWidth: "100%",
+                  border: "1px solid #ccc",
+                  marginTop: "0.5rem",
+                }}
+              />
+            </Grid>
+          )}
+        </>
+      )}
+      
     <Box sx={{ mt: 2 }}>
       <Typography variant="body2" fontWeight="bold" gutterBottom>
         Outros:
