@@ -2312,7 +2312,6 @@ async function fetchComunidades(forcar = false) {
                 <input
                   type="file"
                   accept="image/*"
-                  capture="environment"
                   hidden
                   onChange={async (e) => {
                     console.log("📸 Arquivo capturado:", e.target.files);
