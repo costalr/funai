@@ -2291,7 +2291,7 @@ async function fetchComunidades(forcar = false) {
                 Registro Fotográfico da Entrega
               </Typography>
 
-              <Button
+                <Button
                 variant="outlined"
                 component="label"
                 fullWidth
@@ -2311,12 +2311,16 @@ async function fetchComunidades(forcar = false) {
 
                 <input
                   type="file"
-                  hidden
                   accept="image/*"
                   capture="environment"
+                  hidden
                   onChange={async (e) => {
-                    const file = e.target.files[0];
-                    if (!file) return;
+                    console.log("📸 Arquivo capturado:", e.target.files);
+                    const file = e.target.files?.[0];
+                    if (!file) {
+                      alert("⚠️ Nenhuma foto foi capturada ou selecionada.");
+                      return;
+                    }
 
                     let exifData = null;
                     try {
@@ -2360,9 +2364,9 @@ async function fetchComunidades(forcar = false) {
                     });
 
                     const textoCarimbo = `${nomeProjeto}
-${nomeComunidade}
-Coordenadas: ${latitude}, ${longitude}
-${dataFormatada} às ${hora}`;
+              ${nomeComunidade}
+              Coordenadas: ${latitude}, ${longitude}
+              ${dataFormatada} às ${hora}`;
 
                     const blob = await addTimestampToImage(file, textoCarimbo);
                     const imagemFinal = new File([blob], `entrega_${Date.now()}.jpg`, {
