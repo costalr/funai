@@ -1,69 +1,121 @@
-## 🧩 Visão Geral
 
-Este projeto é um formulário web para registrar atendimentos de proteção social realizados pela equipe de campo da FUNAI. Ele está integrado ao Supabase, com tabelas vinculadas para diferentes tipos de atendimento (assistência, previdência, saúde, etc).
+# 🛡️ Plataforma de Formulários – Proteção Social Yanomami
 
-O sistema foi construído com React + MUI (Material UI), Django como backend, Supabase como repositório de banco de dados e lógica modularizada por tipo de atendimento.
-
-## 🗂️ Estrutura de Pastas
-
-- `/components`: componentes reutilizáveis
-- `/lib/supabaseAssistencia.js`: instância do Supabase para tabelas da Assistência
-- `/lib/supabaseCestas.js`: instância para tabelas de referência (como comunidade)
-- `/pages/FormularioProtecao.jsx`: página principal do formulário
-
-## 🔐 Conexão com Supabase
-
-O projeto utiliza duas instâncias de Supabase:
-
-- `supabaseCestas`: para tabelas de referência (comunidade, subpolo/polo)
-- `supabaseAssistencia`: para salvar os dados de atendimento
-
-As chaves públicas de cada projeto devem estar configuradas em arquivos `.env.local`:
-
-```env
-NEXT_PUBLIC_SUPABASE_URL_ASSISTENCIA=
-NEXT_PUBLIC_SUPABASE_ANON_KEY_ASSISTENCIA=
-NEXT_PUBLIC_SUPABASE_URL_CESTAS=
-NEXT_PUBLIC_SUPABASE_ANON_KEY_CESTAS=
-
-
+Este repositório contém o código-fonte do **formulário de proteção social** da FUNAI, utilizado para registrar atendimentos em campo, com integração direta ao banco de dados **Supabase**.
 
 ---
 
-### 4. 🧠 Lógica de Funcionamento
+## 🧩 Visão Geral
 
-```markdown
+- **Front-end:** React + Vite + Material UI (MUI)
+- **Back-end:** Django (API REST)
+- **Banco de dados:** Supabase (PostgreSQL)
+- **Armazenamento de imagens:** Buckets do Supabase (`fotos-entregas`)
+- **Gerenciamento de estado:** React hooks (`useState`, `useEffect`)
+- **Cache de comunidades:** LocalStorage com validade de 24h
+
+---
+
+## 🗂️ Estrutura de Pastas
+
+```
+/src
+ ├── components
+ │    └── FormProtecaoSocial.jsx
+ ├── pages
+ │    ├── Home.jsx
+ │    ├── DashboardGeral.jsx
+ │    ├── DashboardPessoal.jsx
+ │    └── Login.jsx
+ ├── lib
+ │    ├── supabaseAssistencia.js
+ │    └── supabaseCestas.js
+ ├── debug
+ │    └── TesteSupabase.jsx
+```
+
+---
+
+## 🔐 Conexão com Supabase
+
+Existem **duas instâncias** de Supabase no projeto:
+
+- `supabaseAssistencia`: utilizada para as tabelas de atendimento (informações pessoais, deslocamentos, atendimentos etc.).
+- `supabaseCestas`: utilizada para tabelas de referência (comunidade, subpolo, polo).
+
+Configurações devem estar no arquivo `.env.local`:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL_ASSISTENCIA=<URL_DO_SUPABASE_ASSISTENCIA>
+NEXT_PUBLIC_SUPABASE_ANON_KEY_ASSISTENCIA=<CHAVE_PUBLICA_ASSISTENCIA>
+NEXT_PUBLIC_SUPABASE_URL_CESTAS=<URL_DO_SUPABASE_CESTAS>
+NEXT_PUBLIC_SUPABASE_ANON_KEY_CESTAS=<CHAVE_PUBLICA_CESTAS>
+```
+
+---
+
 ## 🧠 Lógica do Formulário
 
-- O formulário é dividido em blocos temáticos: Dados do Atendimento, Pessoa Atendida, Modal de Deslocamento, Tipos de Atendimento, etc.
-- Cada tipo de atendimento renderiza subcomponentes com base nas seleções feitas.
-- A comunidade é selecionada via `Autocomplete`, com cache local de 24h.
-- Se a comunidade for "Outros", o polo base pode ser preenchido manualmente.
-- Ao enviar, o sistema salva primeiro em `informacoes_pessoais` e em seguida nas tabelas associadas, como `atendimento_assistencia`, `atendimento_documentacao`, etc.
+- Dividido em **blocos temáticos**:
+  1. Dados do Atendimento
+  2. Pessoa Atendida
+  3. Modal de Deslocamento
+  4. Tipos de Atendimento (Assistência, Previdência, Saúde, etc.)
+  5. Observações
+
+- **Seleção de Comunidade:** via `Autocomplete`, com cache em `localStorage` por 24h.
+- **Comunidade "Outros":** habilita campos manuais de nome e polo base.
+- **Envio:** salva primeiro na tabela `informacoes_pessoais`, em seguida nas tabelas específicas (`atendimento_assistencia`, `atendimento_saude`, `atendimento_documentacao`, etc.).
+
+---
 
 ## 🧪 Validações
 
-- Nome e comunidade são obrigatórios
-- Modal de deslocamento deve conter pelo menos uma opção
-- Quando há “Viatura/Embarcação/Frete Oficial”, o órgão responsável é obrigatório
-- Tempo de deslocamento é obrigatório
-- “Interno ou Externo” é obrigatório apenas se o município for:
+- Nome da pessoa e comunidade são obrigatórios.
+- Pelo menos **um modal de deslocamento** deve ser selecionado.
+- Para opções **Oficiais** (Viatura, Embarcação, Frete), o campo “Órgão responsável” é obrigatório.
+- Tempo de deslocamento é obrigatório.
+- Campo “Interno ou Externo” é obrigatório se o município for:
   - Boa Vista
   - São Gabriel da Cachoeira
   - Santa Isabel do Rio Negro
   - Barcelos
 
+---
+
+## 🖼️ Upload de Fotos
+
+- Utiliza `<input type="file" accept="image/*" capture="environment">`.
+- Lê dados EXIF (GPS e data) usando `exifr`.
+- Aplica **carimbo com informações da entrega** na foto (nome do projeto, comunidade, coordenadas e data/hora).
+- Salva a imagem no bucket `fotos-entregas` e grava a URL pública no campo `url_foto_entrega` da tabela `atendimento_seguranca_alimentar`.
+
+---
+
 ## 🧼 Limpeza do Formulário
 
-Função `handleClear()`:
-- Restaura os valores iniciais
-- Reaplica a data e coordenadas
-- Apaga estados como tipo de atendimento e observações
+A função `handleClear()`:
 
-Essa função é acionada pelo botão “Limpar Formulário”.
+- Reseta todos os estados (nome, comunidade, tipos de atendimento, observações).
+- Reaplica data/hora atual e coordenadas.
+- É disparada pelo botão **"Limpar Formulário"**.
+
+---
 
 ## 🚨 Pontos de Atenção
 
-- O campo `subpolo` foi renomeado para `polo_base`, então qualquer código ou integração anterior com `subpolo` deve ser atualizado.
-- Sempre verificar se as tabelas estão sincronizadas com os campos usados no frontend.
-- O Supabase precisa ter permissões corretas de escrita e leitura.
+- O campo `subpolo` foi **renomeado para `polo_base`** – todos os pontos do código e do banco devem refletir isso.
+- As regras de segurança (RLS) do Supabase devem permitir `insert` e `update` para usuários autenticados.
+- Verifique se as colunas do banco estão **sincronizadas com os campos do front-end**.
+
+---
+
+## 🚀 Próximos Passos
+
+- [ ] Corrigir comportamento do upload em dispositivos móveis (camera/gallery).
+- [ ] Adicionar formulário de **Entrega de Cestas**.
+- [ ] Criar **dashboard** unificado com métricas e gráficos.
+- [ ] Integrar **toast notifications** (`react-toastify`).
+- [ ] Melhorar UX de cache e recarga de comunidades.
+
+---
