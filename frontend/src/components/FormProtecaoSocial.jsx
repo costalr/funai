@@ -21,12 +21,30 @@ import {
 
 export default function FormularioProtecao() {
   const [servidor, setServidor] = useState("");
+  function toTitleCase(str) {
+  return (str || "")
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+  function splitFullName(full) {
+    const p = (full || "").trim().split(/\s+/);
+    if (p.length === 0) return { nome: "", sobrenome: "" };
+    if (p.length === 1) return { nome: p[0], sobrenome: "" };
+    return { nome: p[0], sobrenome: p.slice(1).join(" ") };
+  }
+
+  function joinFullName(nome, sobrenome) {
+    return [nome, sobrenome].filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+  }
   const [genero, setGenero] = useState("");
   const [dataNascimento, setDataNascimento] = useState("");
   const [dataHora, setDataHora] = useState("");
-  const [coordenadas, setCoordenadas] = useState({ latitude: "", longitude: "" });
+  const [coordenadas, setCoordenadas] = useState({ latitude: null, longitude: null });
   const [nome, setNome] = useState("");
+  const [sobrenome, setSobrenome] = useState("");
   const [comunidades, setComunidades] = useState([]);
+  const [usaFiltroNascimento, setUsaFiltroNascimento] = useState(false);
   const [comunidadeSelecionada, setComunidadeSelecionada] = useState(null);
   const [comunidadeManual, setComunidadeManual] = useState("");
   const [poloBaseManual, setPoloBaseManual] = useState("");
@@ -57,12 +75,8 @@ export default function FormularioProtecao() {
   fluvial: [],
   aereo: [],
 });
-  const [orgaos, setOrgaos] = useState({ viatura: "", embarcacao: "", freteOficial: "" });
-  const [opcaoOrgao, setOpcaoOrgao] = useState({
-      viatura: "",
-      embarcacao: "",
-      aereo: "", 
-    });
+  const [orgaos, setOrgaos] = useState({ viatura: "", embarcacao: "", aereo: "" });
+  const [opcaoOrgao, setOpcaoOrgao] = useState({ viatura: "", embarcacao: "", aereo: "" });
   const orgaosDisponiveis = ["DSEI-Y", "FUNAI", "Exército"];
   const [tempoDeslocamento, setTempoDeslocamento] = useState("");
   const [tipoAtendimento, setTipoAtendimento] = useState([]);
@@ -108,8 +122,6 @@ export default function FormularioProtecao() {
     setOpcaoOrgao((prev) => ({ ...prev, [tipo]: valor }));
     setOrgaos((prev) => ({ ...prev, [tipo]: valor }));
   };
-
-  
   const [outrosDetalhes, setOutrosDetalhes] = useState({
     insumos: false,
     rede_dormir: false,
@@ -128,13 +140,15 @@ export default function FormularioProtecao() {
     deslocamento_fluvial: false
   });
   const [observacoes, setObservacoes] = useState("");
-  
   const [erros, setErros] = useState([]);
  const validarFormulario = () => {
   const novosErros = [];
 
   if (!nome.trim()) {
-    novosErros.push("O nome da pessoa atendida é obrigatório.");
+  novosErros.push("O nome é obrigatório.");
+  }
+  if (!sobrenome.trim()) {
+    novosErros.push("O sobrenome é obrigatório.");
   }
 
   if (!comunidadeSelecionada) {
@@ -176,91 +190,134 @@ export default function FormularioProtecao() {
   setErros(novosErros);
   return novosErros.length === 0;
 };
-
- const handleSubmit = async () => {
+const handleSubmit = async () => {
   if (!validarFormulario()) return;
-  if (isSubmitting) return; 
 
-  setIsSubmitting(true); // Ativa bloqueio de envio imediatamente
+  if (showSugestoes) {
+    alert("Antes de salvar, escolha um cadastro sugerido ou clique em 'Criar novo cadastro mesmo assim'.");
+    return;
+  }
+  if (isSubmitting) return;
+
+  setIsSubmitting(true);
 
   try {
+const nomeCompletoTitle = toTitleCase(joinFullName(nome, sobrenome));
+let idPessoa = idPessoaSelecionada ?? null;
 
-        // 🔎 Verifica se a pessoa já existe
-    const { data: pessoaExistente, error: erroPessoa } = await supabaseAssistencia
-    .from("pessoa_atendida")
-    .select("id_pessoa")
-    .eq("nome", nome.trim())
-    .eq("id_comunidade", comunidadeSelecionada?.value === "outros" ? null : comunidadeSelecionada?.value)
-    .maybeSingle();
 
-    let idPessoa;
+  if (!idPessoa) {
+    let qbPessoa = supabaseAssistencia
+   .from("pessoa_atendida")
+   .select("id_pessoa")
+   .eq("nome", nomeCompletoTitle)
+  .limit(1);
+  if (dataNascimento) qbPessoa = qbPessoa.eq("data_nascimento", dataNascimento);
+  const { data: jaExiste, error: erroChecagem } = await qbPessoa.maybeSingle();
 
-    if (pessoaExistente) {
-    idPessoa = pessoaExistente.id_pessoa;
-    } else {
-    // Se não existir, insere nova pessoa
-    const { data: novaPessoa, error: erroNovaPessoa } = await supabaseAssistencia
-      .from("pessoa_atendida")
-      .insert([
-        {
-          nome: nome.trim(),
-          genero: genero || null,
-          data_nascimento: dataNascimento || null,
-          id_comunidade: comunidadeSelecionada?.value === "outros" ? null : Number(comunidadeSelecionada?.value)
-        }        
-      ])
-      .select()
-      .single();
-
-    if (erroNovaPessoa) {
-      alert("Erro ao salvar pessoa atendida: " + erroNovaPessoa.message);
+    if (erroChecagem) {
+      alert("Falha ao checar pessoa: " + erroChecagem.message);
       setIsSubmitting(false);
       return;
     }
 
-    idPessoa = novaPessoa.id_pessoa;
-    }
+    if (jaExiste?.id_pessoa) {
+      // ✅ Já existe: usa o id e NÃO cria de novo
+      idPessoa = jaExiste.id_pessoa;
+    } else {
+      // ✅ Não existe: cria
+      const { data: novaPessoa, error: erroNovaPessoa } = await supabaseAssistencia
+        .from("pessoa_atendida")
+        .insert([{
+          nome: nomeCompletoTitle,
+          genero: genero || null,
+          data_nascimento: dataNascimento || null,
+          id_comunidade: comunidadeSelecionada?.value === "outros"
+            ? null
+            : (comunidadeSelecionada?.value ? Number(comunidadeSelecionada.value) : null),
+        }])
+        .select("id_pessoa")
+        .single();
 
-    // ✅ 1. Inserção em informacoes_pessoais
+      // Se outra pessoa criou "ao mesmo tempo", pode vir 23505: pega a já existente e segue.
+      if (erroNovaPessoa) {
+        // 23505 = unique_violation
+        if (erroNovaPessoa.code === "23505") {
+          const { data: again } = await supabaseAssistencia
+            .from("pessoa_atendida")
+            .select("id_pessoa")
+            .eq("nome", nomeCompletoTitle)
+            .maybeSingle();
+          if (again?.id_pessoa) {
+            idPessoa = again.id_pessoa;
+          } else {
+            alert("Erro ao salvar pessoa atendida: " + erroNovaPessoa.message);
+            setIsSubmitting(false);
+            return;
+          }
+        } else {
+          alert("Erro ao salvar pessoa atendida: " + erroNovaPessoa.message);
+          setIsSubmitting(false);
+          return;
+        }
+      } else {
+        idPessoa = novaPessoa.id_pessoa;
+      }
+    }
+  }
+
+  if (!idPessoa) {
+    alert("Não foi possível obter o id da pessoa.");
+    setIsSubmitting(false);
+    return;
+  }
+
+      // coordenadas (normalizadas)
+    const lat = Number.isFinite(+coordenadas?.latitude) ? +coordenadas.latitude : null;
+    const lon = Number.isFinite(+coordenadas?.longitude) ? +coordenadas.longitude : null;
+
+    // 3) informacoes_pessoais
     const { data: atendimentoData, error: atendimentoError } = await supabaseAssistencia
       .from("informacoes_pessoais")
       .insert([{
-        nome_servidor: servidor,
-        data_hora: dataHora,
-        nome_atendido: nome,
-        comunidade:
-        comunidadeSelecionada?.value === "outros"
-          ? comunidadeManual
-          : comunidadeSelecionada?.label || "",
-
-      polo_base: // agora representa o Polo Base
-        comunidadeSelecionada?.value === "outros"
-          ? poloBaseManual
-          : comunidadeSelecionada?.subpolo?.nome_subpolo || null,
+        id_pessoa: idPessoa,
+        nome_servidor: servidor || null,
+        data_hora: dataHora || null,
+        nome_atendido: nomeCompletoTitle,
+        comunidade: comunidadeSelecionada?.value === "outros"
+          ? (comunidadeManual || null)
+          : (comunidadeSelecionada?.label || null),
+        polo_base: comunidadeSelecionada?.value === "outros"
+          ? (poloBaseManual || null)
+          : (comunidadeSelecionada?.subpolo?.nome_subpolo || null),
         polo: comunidadeSelecionada?.subpolo?.polo?.nome_polo || null,
-        municipio,
-        tipo_unidade: localUnidade,
-        data_atendimento: dataAtendimento,
-        precisa_interprete: precisaInterprete,
-        latitude: coordenadas.latitude,
-        longitude: coordenadas.longitude,
-        adultos,
-        criancas,
-        idosos,
-        observacoes
+        municipio: municipio || null,
+        // 👇 aqui estava "tipoUnidade"; use o state correto
+        tipo_unidade: localUnidade || null,
+        data_atendimento: dataAtendimento || null,
+        precisa_interprete: !!precisaInterprete,
+        latitude: lat,
+        longitude: lon,
+        adultos: Number.isFinite(+adultos) ? +adultos : 0,
+        criancas: Number.isFinite(+criancas) ? +criancas : 0,
+        idosos: Number.isFinite(+idosos) ? +idosos : 0,
+        observacoes: observacoes || null,
       }])
       .select()
       .single();
 
     if (atendimentoError) {
       alert("Erro ao salvar informações pessoais: " + atendimentoError.message);
+      setIsSubmitting(false);
       return;
     }
 
-
     const id_atendimento = atendimentoData.id_atendimento;
 
-    // ✅ 2. Inserção em informacoes_deslocamento
+
+ 
+
+    // 4) informacoes_deslocamento
     const deslocamentos = [];
     Object.entries(modalDeslocamento).forEach(([modal, meios]) => {
       meios.forEach((meio) => {
@@ -269,13 +326,10 @@ export default function FormularioProtecao() {
           tipo_modal: modal,
           meio,
           orgao:
-            modal === "terrestre" && meio === "Viatura Oficial"
-              ? orgaos.viatura
-              : modal === "fluvial" && meio === "Embarcação Oficial"
-              ? orgaos.embarcacao
-              : modal === "aereo" && meio === "Frete aéreo Oficial"
-              ? orgaos.freteOficial
-              : null,
+            (modal === "terrestre" && meio === "Viatura Oficial") ? orgaos.viatura
+            : (modal === "fluvial" && meio === "Embarcação Oficial") ? orgaos.embarcacao
+            : (modal === "aereo" && meio === "Frete aéreo Oficial") ? orgaos.aereo
+            : null,
           tempo_deslocamento: tempoDeslocamento
         });
       });
@@ -285,7 +339,7 @@ export default function FormularioProtecao() {
       await supabaseAssistencia.from("informacoes_deslocamento").insert(deslocamentos);
     }
 
-    // ✅ 3. Atendimento: Assistência Social
+    // 5) Assistência Social
     if (tipoAtendimento.includes("assistencia")) {
       const { baixa, alta, outros, bpc = {} } = assistenciaDetalhes;
 
@@ -293,9 +347,7 @@ export default function FormularioProtecao() {
         id_atendimento,
         complexidade: assistenciaSelecionada.includes("baixa")
           ? "baixa"
-          : assistenciaSelecionada.includes("alta")
-          ? "alta"
-          : null,
+          : (assistenciaSelecionada.includes("alta") ? "alta" : null),
         cadastro_unico: baixa?.cadastro_unico || false,
         pbf: baixa?.pbf || false,
         bpc: baixa?.bpc || false,
@@ -308,7 +360,7 @@ export default function FormularioProtecao() {
       }]);
     }
 
-    // ✅ 4. Atendimento: Previdência
+    // 6) Previdência
     if (tipoAtendimento.includes("previdencia")) {
       const previdencias = Object.entries(previdenciaDetalhes).map(([tipo, detalhes]) => ({
         id_atendimento,
@@ -319,11 +371,12 @@ export default function FormularioProtecao() {
         consulta: detalhes?.consulta || false,
         exigencia: detalhes?.exigencia || false
       }));
-
-      await supabaseAssistencia.from("atendimento_previdencia").insert(previdencias);
+      if (previdencias.length) {
+        await supabaseAssistencia.from("atendimento_previdencia").insert(previdencias);
+      }
     }
 
-    // ✅ 5. Atendimento: Documentação
+    // 7) Documentação
     if (tipoAtendimento.includes("documentacao")) {
       const documentacoes = Object.entries(documentacaoDetalhes)
         .filter(([tipo]) => tipo !== "outros")
@@ -336,11 +389,12 @@ export default function FormularioProtecao() {
           retificacao: detalhes["Retificação"] || false,
           boletim_ocorrencia: detalhes["Boletim de Ocorrência para Perda ou Roubo de Documentos"] || false
         }));
-
-      await supabaseAssistencia.from("atendimento_documentacao").insert(documentacoes);
+      if (documentacoes.length) {
+        await supabaseAssistencia.from("atendimento_documentacao").insert(documentacoes);
+      }
     }
 
-    // ✅ 6. Atendimento: Saúde
+    // 8) Saúde
     if (tipoAtendimento.includes("saude")) {
       await supabaseAssistencia.from("atendimento_saude").insert([{
         id_atendimento,
@@ -352,45 +406,33 @@ export default function FormularioProtecao() {
       }]);
     }
 
-    // ✅ 7. Atendimento: Segurança Alimentar
-if (tipoAtendimento.includes("alimentos")) {
-  const { data, error } = await supabaseAssistencia
-    .from("atendimento_seguranca_alimentar")
-    .insert([
-      {
-        id_atendimento,
-        cesta: segAlimentarSelecionada.includes("cesta"),
-        quantidade_cesta: segAlimentarSelecionada.includes("cesta") ? segAlimentarDetalhes.cesta : null,
-        refeicao: segAlimentarSelecionada.includes("refeicao"),
-        quantidade_refeicao: segAlimentarSelecionada.includes("refeicao") ? segAlimentarDetalhes.refeicao : null,
-        restaurante: segAlimentarSelecionada.includes("restaurante"),
-        encaminhamento: segAlimentarSelecionada.includes("encaminhamento"),
-        outros: segAlimentarDetalhes.outros || null
+    // 9) Segurança Alimentar (com upload de foto se houver)
+    if (tipoAtendimento.includes("alimentos")) {
+      const { data, error } = await supabaseAssistencia
+        .from("atendimento_seguranca_alimentar")
+        .insert([{
+          id_atendimento,
+          cesta: segAlimentarSelecionada.includes("cesta"),
+          quantidade_cesta: segAlimentarSelecionada.includes("cesta") ? segAlimentarDetalhes.cesta : null,
+          refeicao: segAlimentarSelecionada.includes("refeicao"),
+          quantidade_refeicao: segAlimentarSelecionada.includes("refeicao") ? segAlimentarDetalhes.refeicao : null,
+          restaurante: segAlimentarSelecionada.includes("restaurante"),
+          encaminhamento: segAlimentarSelecionada.includes("encaminhamento"),
+          outros: segAlimentarDetalhes.outros || null
+        }])
+        .select("id")
+        .single();
+
+      if (error) throw new Error("Erro ao salvar segurança alimentar");
+
+      const idAtendimentoSegAlimentar = data?.id;
+
+      if (segAlimentarDetalhes.imagemEntrega && idAtendimentoSegAlimentar) {
+        await uploadFotoEntrega(segAlimentarDetalhes.imagemEntrega, idAtendimentoSegAlimentar);
       }
-    ])
-    .select("id")
-    .single(); // <-- pega o id gerado
-
-  if (error) {
-    throw new Error("Erro ao salvar segurança alimentar");
-  }
-
-  const idAtendimentoSegAlimentar = data?.id;
-
-  // Se houver imagem, faz upload e atualiza a URL no banco
-  if (segAlimentarDetalhes.imagemEntrega) {
-    const url = await uploadFotoEntrega(
-      segAlimentarDetalhes.imagemEntrega,
-      idAtendimentoSegAlimentar
-    );
-
-    if (!url) {
-      console.warn("⚠️ Imagem enviada, mas não foi possível salvar a URL.");
     }
-  }
-}
 
-    // ✅ 8. Atendimento: Outros
+    // 10) Outros
     if (tipoAtendimento.includes("outros")) {
       await supabaseAssistencia.from("atendimento_outros").insert([{
         id_atendimento,
@@ -414,9 +456,8 @@ if (tipoAtendimento.includes("alimentos")) {
       }]);
     }
 
-    setErros([]); // limpa a caixa de erros, se houver
+    setErros([]);
     alert("Formulário enviado com sucesso!");
-
   } catch (err) {
     console.error("Erro ao enviar formulário", err);
     alert("Erro ao enviar formulário. Verifique os dados e tente novamente.");
@@ -425,10 +466,31 @@ if (tipoAtendimento.includes("alimentos")) {
   }
 };
 
+const handleNomeChange = (e) => {
+  const v = e.target.value;
+  setNome(v);
+
+  if (idPessoaSelecionada) {
+    setIdPessoaSelecionada(null);
+    setSobrenome("");
+    setDataNascimento("");    
+    setShowSugestoes(false);    
+    setComunidadeSelecionada(null); 
+  }
+
+  if (v.trim() === "") {
+    setSobrenome("");
+    setDataNascimento("");      
+    setSugestoesPessoa([]);
+    setShowSugestoes(false);
+    setComunidadeSelecionada(null);
+  }
+};
+
 const handleClear = () => {
   setServidor("");
   setDataHora(new Date().toISOString().slice(0, 16));
-  setCoordenadas({ latitude: "", longitude: "" });
+  setCoordenadas({ latitude: null, longitude: null});
   setNome("");
   setComunidadeSelecionada(null);
   setAdultos(0);
@@ -436,8 +498,8 @@ const handleClear = () => {
   setIdosos(0);
   setMunicipio("");
   setModalDeslocamento({ terrestre: [], fluvial: [], aereo: [] });
-  setOrgaos({ viatura: "", embarcacao: "", freteOficial: "" });
-  setOpcaoOrgao({ viatura: "", embarcacao: "", freteOficial: "" });
+  setOrgaos({ viatura: "", embarcacao: "", aereo: "" });
+  setOpcaoOrgao({ viatura: "", embarcacao: "", aereo: "" });
   setTempoDeslocamento("");
   setTipoAtendimento([]);
   setAssistenciaSelecionada([]);
@@ -485,9 +547,14 @@ const handleClear = () => {
   setDataHora(localDate);
   setDataAtendimento(localDate.slice(0, 10));
 };
+// Sugestões de possíveis duplicados
+const [sugestoesPessoa, setSugestoesPessoa] = useState([]); // array de candidatos
+const [showSugestoes, setShowSugestoes] = useState(false);
+const [idPessoaSelecionada, setIdPessoaSelecionada] = useState(null);
 
-
-
+// Controle de debounce da busca
+const [buscandoSugestoes, setBuscandoSugestoes] = useState(false);
+let debounceTimer = null;
 
   const opcoesTempoDeslocamento = [
   { value: "ate_1", label: "Até 1 dia" },
@@ -592,6 +659,130 @@ const toggleOption = (categoria, opcao) => {
   });
 };
 
+// desenha o texto (carimbo) na imagem e retorna um Blob JPEG
+// /** @param {File} file @param {string} text @returns {Promise<Blob>} */
+async function addTimestampToImage(file, text) {
+  const img = new Image();
+  img.src = URL.createObjectURL(file);
+
+  await new Promise((res, rej) => {
+    img.onload = () => res(null);
+    img.onerror = (e) => rej(e);
+  });
+
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas 2D context not available');
+
+  // mantém a resolução original da foto
+  canvas.width = img.naturalWidth || img.width;
+  canvas.height = img.naturalHeight || img.height;
+
+  // desenha a foto
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+  // estiliza e desenha o carimbo (canto inferior esquerdo)
+  const padding = Math.round(canvas.width * 0.02); // 2% da largura
+  const fontSize = Math.max(16, Math.round(canvas.width * 0.025)); // escala com a foto
+  ctx.font = `bold ${fontSize}px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
+  ctx.textBaseline = 'bottom';
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+
+  const lines = text.split('\n').map((s) => s.trim());
+  const lineHeight = Math.round(fontSize * 1.25);
+  const textWidth = Math.max(...lines.map((l) => ctx.measureText(l).width));
+  const boxHeight = lineHeight * lines.length + padding * 2;
+  const boxWidth = textWidth + padding * 2;
+
+  const x = padding;
+  const y = canvas.height - padding;
+
+  // caixa de fundo para dar contraste
+  ctx.fillRect(x - padding * 0.5, y - boxHeight, boxWidth, boxHeight);
+
+  // texto
+  ctx.fillStyle = '#fff';
+  lines.forEach((line, i) => {
+    ctx.fillText(line, x, y - (lines.length - 1 - i) * lineHeight - padding);
+  });
+
+  // exporta como JPEG
+  return await new Promise((resolve) => {
+    canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.92);
+  });
+}
+
+
+
+// ✅ função utilitária para buscar sugestões
+async function buscarSugestoesPessoa(nome, dataNascimento) {
+  try {
+    // 1) Pessoas
+    let qb = supabaseAssistencia
+      .from("pessoa_atendida")
+      .select("id_pessoa,nome,data_nascimento,genero,id_comunidade")
+      .ilike("nome", `%${(nome || "").trim()}%`)
+      .order("nome", { ascending: true })
+      .limit(5);
+
+    if (usaFiltroNascimento && dataNascimento) {   // 👈 mudou aqui
+        qb = qb.eq("data_nascimento", dataNascimento);
+      }
+
+    const { data: pessoas, error: errPessoas } = await qb;
+    if (errPessoas) {
+      return { data: [], error: errPessoas };
+    }
+
+    // 2) Comunidades (se tiver id)
+    const ids = [...new Set((pessoas || []).map(p => p.id_comunidade).filter(Boolean))];
+    let mapaComunidade = {};
+    if (ids.length) {
+      const { data: comus, error: errComu } = await supabaseCestas
+        .from("comunidade")
+        .select(`
+          id_comunidade,
+          nome_comunidade,
+          comunidade_id_subpolo_fkey (
+            nome_subpolo,
+            polo (nome_polo)
+          )
+        `)
+        .in("id_comunidade", ids);
+
+      if (!errComu && comus) {
+        comus.forEach(c => { mapaComunidade[c.id_comunidade] = c; });
+      }
+    }
+
+    // 3) Monta resultado final com label amigável
+    const resultado = (pessoas || []).map(p => {
+      const c = p.id_comunidade ? mapaComunidade[p.id_comunidade] : null;
+      const sub = c?.comunidade_id_subpolo_fkey?.nome_subpolo || "";
+      const polo = c?.comunidade_id_subpolo_fkey?.polo?.nome_polo || "";
+      const comuLabel = c
+        ? `${c.nome_comunidade}${sub || polo ? ` — ${sub}${polo ? ` / ${polo}` : ""}` : ""}`
+        : "Comunidade não informada";
+
+      return {
+        id_pessoa: p.id_pessoa,
+        nome: p.nome,
+        data_nascimento: p.data_nascimento,
+        genero: p.genero,
+        id_comunidade: p.id_comunidade,
+        comunidade_label: comuLabel,
+      };
+    });
+
+    return { data: resultado, error: null };
+  } catch (e) {
+    return { data: [], error: e };
+  }
+}
+
+
+
+
 useEffect(() => {
   const usuario = JSON.parse(localStorage.getItem("usuario"));
   if (usuario) setServidor(usuario.nome_completo);
@@ -605,9 +796,8 @@ useEffect(() => {
 
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(async (position) => {
-      const lat = position.coords.latitude.toFixed(5);
-      const lon = position.coords.longitude.toFixed(5);
-
+      const lat = Number(position.coords.latitude.toFixed(5));
+      const lon = Number(position.coords.longitude.toFixed(5));
       setCoordenadas({ latitude: lat, longitude: lon });
 
       // Busca o município usando Nominatim
@@ -627,6 +817,57 @@ useEffect(() => {
 
     fetchComunidades();
   }, []);
+
+useEffect(() => {
+  if (idPessoaSelecionada) {
+    setSugestoesPessoa([]);
+    setShowSugestoes(false);
+    return;
+  }
+
+  const first = (nome || "").trim();
+  const last  = (sobrenome || "").trim();
+
+  // Continua não sugerindo com < 3 letras no NOME
+  if (first.length < 3) {
+    setSugestoesPessoa([]);
+    setShowSugestoes(false);
+    return;
+  }
+
+  // 2) Só usa nome completo se o SOBRENOME tiver 3+ letras
+  const termo = last.length >= 3 ? `${first} ${last}` : first;
+
+  let cancelado = false;
+  const t = setTimeout(async () => {
+    setBuscandoSugestoes(true);
+    try {
+      const { data, error } = await buscarSugestoesPessoa(termo, dataNascimento);
+      if (cancelado) return;
+
+      if (error) {
+        console.error("Erro ao buscar sugestões:", error);
+        setSugestoesPessoa([]);
+        setShowSugestoes(false);
+      } else {
+        setSugestoesPessoa(data ?? []);
+        setShowSugestoes((data ?? []).length > 0);
+      }
+    } catch (e) {
+      if (!cancelado) {
+        console.error("Falha inesperada:", e);
+        setSugestoesPessoa([]);
+        setShowSugestoes(false);
+      }
+    } finally {
+      if (!cancelado) setBuscandoSugestoes(false);
+    }
+  }, 400);
+
+  return () => { cancelado = true; clearTimeout(t); };
+}, [nome, sobrenome, dataNascimento, idPessoaSelecionada]);
+
+
 
 
 async function fetchComunidades(forcar = false) {
@@ -656,14 +897,6 @@ async function fetchComunidades(forcar = false) {
     console.error("Erro ao buscar comunidades:", error);
     return;
   }
-
-  if (segAlimentarDetalhes.imagemEntrega) {
-  const url = await uploadFotoEntrega(segAlimentarDetalhes.imagemEntrega, idAtendimento);
-
-  if (!url) {
-    console.warn("⚠️ A imagem foi enviada, mas a URL não foi salva no banco.");
-  }
-}
 
 
 
@@ -717,7 +950,6 @@ async function fetchComunidades(forcar = false) {
   localStorage.setItem("comunidades_cache", JSON.stringify(unicos));
   localStorage.setItem("comunidades_cache_time", agora.toString());
 }
-
 
 
   async function uploadFotoEntrega(imagemFile, idAtendimento) {
@@ -874,8 +1106,7 @@ async function fetchComunidades(forcar = false) {
         Coordenadas
       </Typography>
       <TextField
-        value={`Lat: ${coordenadas.latitude}, Lon: ${coordenadas.longitude}`}
-        fullWidth
+        value={`Lat: ${coordenadas.latitude ?? "—"}, Lon: ${coordenadas.longitude ?? "—"}`}        fullWidth
         size="small"
         disabled
         InputProps={{ readOnly: true }}
@@ -1028,29 +1259,129 @@ async function fetchComunidades(forcar = false) {
     <span role="img" aria-label="user">👤</span> Pessoa Atendida
   </Typography>
 
-  <Grid container spacing={2}>
-    {/* Nome */}
-    <Grid item xs={12} sm={6}>
-      <Typography variant="caption" fontWeight="medium" color="text.secondary" sx={{ mb: 0.5 }}>
-        Nome da Pessoa Atendida
-      </Typography>
-      <TextField
-        placeholder="Digite o nome completo"
-        value={nome}
-        onChange={(e) => setNome(e.target.value)}
-        fullWidth
-        size="small"
-        sx={{
-          "& .MuiOutlinedInput-root": {
-            borderRadius: 2,
-            fontSize: "0.85rem",
-          },
-          "& input": {
-            padding: "8px 10px",
-          },
-        }}
-      />
-    </Grid>
+    <Grid container spacing={2}>
+      {/* Nome */}
+     <Grid item xs={12} sm={6}>
+    <Typography variant="caption" fontWeight="medium" color="text.secondary" sx={{ mb: 0.5 }}>
+      Nome
+    </Typography>
+    <TextField
+      placeholder="Digite o primeiro nome"
+      value={nome}
+      onChange={handleNomeChange}
+      fullWidth
+      size="small"
+      sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2, fontSize: "0.85rem" } }}
+    />
+
+        {/* Abaixo do <TextField> do nome */}
+{(showSugestoes || buscandoSugestoes) && (
+  <Box sx={{ mt: 1, p: 1.5, border: "1px solid #eee", borderRadius: 2, background: "#fafafa" }}>
+    {buscandoSugestoes && (
+      <Typography variant="body2" color="text.secondary">Buscando sugestões…</Typography>
+    )}
+
+    {!buscandoSugestoes && sugestoesPessoa.length > 0 && (
+      <>
+        <Typography variant="caption" sx={{ display: "block", mb: 1 }}>
+          Encontramos possíveis cadastros. Selecione um para vincular:
+        </Typography>
+
+        {sugestoesPessoa.map((p) => (
+          <Box
+            key={p.id_pessoa}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 1,
+              p: 1,
+              mb: 1,
+              border: "1px solid #e0e0e0",
+              borderRadius: 1,
+              background: "#fff",
+            }}
+          >
+            <Box>
+              <Typography sx={{ fontSize: "0.9rem", fontWeight: 600 }}>
+                {p.nome}
+              </Typography>
+              <Typography sx={{ fontSize: "0.8rem" }} color="text.secondary">
+                {p.data_nascimento ? `Nasc.: ${new Date(p.data_nascimento).toLocaleDateString("pt-BR")}` : "Data nasc. não informada"}
+                {p.id_comunidade ? ` • ${p.comunidade_label}` : ""}
+              </Typography>
+            </Box>
+
+              <Button
+                size="small"
+                variant={idPessoaSelecionada === p.id_pessoa ? "contained" : "outlined"}
+                onClick={() => {
+                  setIdPessoaSelecionada(p.id_pessoa);
+                  const { nome: n, sobrenome: s } = splitFullName(p.nome || "");
+                  setNome(n || "");
+                  setSobrenome(s || "");
+                  setShowSugestoes(false);
+                  if (p.genero && !genero) setGenero(p.genero);
+                  if (p.data_nascimento) {
+                      setDataNascimento(p.data_nascimento.slice(0,10));
+                      setUsaFiltroNascimento(false); // 👈 veio de auto-preenchimento
+                    }
+                  if (p.id_comunidade && comunidades?.length) {
+                    const opt = comunidades.find(c => c.value === p.id_comunidade);
+                    if (opt) setComunidadeSelecionada(opt);
+                  }
+                }}
+
+              >
+                {idPessoaSelecionada === p.id_pessoa ? "Selecionado" : "Usar este"}
+              </Button>
+
+          </Box>
+        ))}
+
+        
+
+        <Button
+          size="small"
+          onClick={() => {
+            // usuário quer ignorar sugestões e criar novo
+            setIdPessoaSelecionada(null);
+            setShowSugestoes(false);
+          }}
+        >
+          Criar novo cadastro mesmo assim
+        </Button>
+      </>
+    )}
+
+      {!buscandoSugestoes && sugestoesPessoa.length === 0 && (
+        <Typography variant="body2" color="text.secondary">
+          Nenhuma sugestão encontrada.
+        </Typography>
+      )}
+    </Box>
+  )}
+
+</Grid>
+      
+       <Grid item xs={12} sm={6}>
+    <Typography variant="caption" fontWeight="medium" color="text.secondary" sx={{ mb: 0.5 }}>
+      Sobrenome
+    </Typography>
+    <TextField
+      placeholder="Digite o(s) sobrenome(s)"
+      value={sobrenome}
+      onChange={(e) => { 
+      setSobrenome(e.target.value); 
+      setIdPessoaSelecionada(null);
+      setUsaFiltroNascimento(false); 
+    }}
+
+      fullWidth
+      size="small"
+      sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2, fontSize: "0.85rem" } }}
+    />
+  </Grid>
 
     <Grid item xs={12} sm={3}>
   <Typography variant="caption" fontWeight="medium" color="text.secondary" sx={{ mb: 0.5 }}>
@@ -1083,7 +1414,9 @@ async function fetchComunidades(forcar = false) {
   <TextField
     type="date"
     value={dataNascimento}
-    onChange={(e) => setDataNascimento(e.target.value)}
+    onChange={(e) => { setDataNascimento(e.target.value); 
+      setUsaFiltroNascimento(!!e.target.value);
+      setIdPessoaSelecionada(null)}}
     fullWidth
     size="small"
     InputLabelProps={{ shrink: true }}
@@ -1157,7 +1490,7 @@ async function fetchComunidades(forcar = false) {
             color="text.secondary"
             sx={{ mb: 0.5 }}
           >
-            Nome da Comunidade (manual)
+            Nome da Comunidade 
           </Typography>
           <TextField
             value={comunidadeManual}
