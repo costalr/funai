@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import AddIcon from "@mui/icons-material/Add";
 import ListAltIcon from "@mui/icons-material/ListAlt";
 import AssessmentIcon from "@mui/icons-material/Assessment";
+import BuildIcon from "@mui/icons-material/Build"; // <-- ícone para ferramentas
 
 export default function Home() {
   return (
@@ -34,6 +35,28 @@ export default function Home() {
               fullWidth
             >
               Cadastrar Atendimento
+            </Button>
+          </Paper>
+        </Grid>
+
+        {/* Entrega de Ferramentas */}
+        <Grid item xs={12} sm={6} md={4}>
+          <Paper elevation={3} sx={{ p: 3, height: "100%" }}>
+            <Typography variant="h6" gutterBottom>
+              <BuildIcon sx={{ verticalAlign: "middle", mr: 1 }} />
+              Entrega de Ferramentas
+            </Typography>
+            <Typography variant="body2" color="text.secondary" mb={2}>
+              Registrar uma entrega de ferramentas
+            </Typography>
+            <Button
+              component={Link}
+              to="/form-ferramentas"
+              variant="contained"
+              color="primary"
+              fullWidth
+            >
+              Cadastrar Entrega
             </Button>
           </Paper>
         </Grid>

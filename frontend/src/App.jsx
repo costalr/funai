@@ -5,6 +5,7 @@ import DashboardPessoal from "./pages/DashboardPessoal";
 import Login from "./pages/Login";
 import RequireAuth from "./components/RequireAuth";
 import FormularioProtecao from "./components/FormProtecaoSocial";
+import FormularioFerramentas from "./components/FormFerramentas"; // <-- novo import
 import TesteSupabase from "./debug/TesteSupabase";
 
 export default function App() {
@@ -29,6 +30,15 @@ export default function App() {
           element={
             <RequireAuth>
               <FormularioProtecao />
+            </RequireAuth>
+          }
+        />
+
+        <Route
+          path="/form-ferramentas"
+          element={
+            <RequireAuth>
+              <FormularioFerramentas />
             </RequireAuth>
           }
         />

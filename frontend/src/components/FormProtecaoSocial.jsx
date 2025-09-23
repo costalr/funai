@@ -554,7 +554,6 @@ const [idPessoaSelecionada, setIdPessoaSelecionada] = useState(null);
 
 // Controle de debounce da busca
 const [buscandoSugestoes, setBuscandoSugestoes] = useState(false);
-let debounceTimer = null;
 
   const opcoesTempoDeslocamento = [
   { value: "ate_1", label: "Até 1 dia" },
